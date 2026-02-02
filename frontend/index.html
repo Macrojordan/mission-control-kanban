@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Control | Kanban</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">🎯</span>
+          <span class="logo-text">Mission Control</span>
+        </div>
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-view="kanban">
+          <span class="nav-icon">📋</span>
+          <span class="nav-text">Kanban</span>
+        </a>
+        <a href="#" class="nav-item" data-view="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-view="randy">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-text">Tarefas do Randy</span>
+          <span class="badge" id="randyBadge">0</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-section">
+        <h3>Projetos</h3>
+        <div id="projectsList" class="projects-list">
+          <!-- Projetos serão carregados aqui -->
+        </div>
+        <button class="btn-add-project" id="btnAddProject">
+          <span>+</span> Novo Projeto
+        </button>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <span class="user-avatar">👤</span>
+          <span class="user-name">Equipe</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <h1 id="pageTitle">Kanban Board</h1>
+          <span class="header-subtitle" id="headerSubtitle"></span>
+        </div>
+        <div class="header-right">
+          <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Buscar tarefas...">
+            <span class="search-icon">🔍</span>
+          </div>
+          <button class="btn-filter" id="btnFilter">
+            <span>⚙️</span> Filtros
+          </button>
+          <button class="btn-primary" id="btnNewTask">
+            <span>+</span> Nova Tarefa
+          </button>
+        </div>
+      </header>
+
+      <!-- Filters Bar -->
+      <div class="filters-bar" id="filtersBar">
+        <div class="filter-group">
+          <label>Prioridade:</label>
+          <select id="filterPriority">
+            <option value="">Todas</option>
+            <option value="high">Alta</option>
+            <option value="medium">Média</option>
+            <option value="low">Baixa</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Projeto:</label>
+          <select id="filterProject">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Atribuído:</label>
+          <select id="filterAssignee">
+            <option value="">Todos</option>
+            <option value="randy">Randy</option>
+            <option value="unassigned">Não atribuído</option>
+          </select>
+        </div>
+        <button class="btn-clear-filters" id="btnClearFilters">Limpar</button>
+      </div>
+
+      <!-- Views -->
+      <div class="views-container">
+        <!-- Kanban View -->
+        <div class="view view-kanban active" id="kanbanView">
+          <div class="kanban-board" id="kanbanBoard">
+            <div class="kanban-column" data-status="backlog">
+              <div class="column-header">
+                <h3>
+                  <span class="column-dot" style="background: #94a3b8;"></span>
+                  Backlog
+                </h3>
+                <span class="column-count">0</span>
+              </div>
+              <div class="column-content" id="col-backlog">
+                <!-- Cards aqui -->
+              </div>
+              <button class="btn-add-card" data-column="backlog">+ Adicionar</button>
+            </div>
+
+            <div class="kanban-column" data-status="todo">
+              <div class="column-header">
+                <h3>
+                  <span class="column-dot" style="background: #3b82f6;"></span>
+                  To Do
+                </h3>
+                <span class="column-count">0</span>
+              </div>
+              <div class="column-content" id="col-todo">
+                <!-- Cards aqui -->
+              </div>
+              <button class="btn-add-card" data-column="todo">+ Adicionar</button>
+            </div>
+
+            <div class="kanban-column" data-status="in_progress">
+              <div class="column-header">
+                <h3>
+                  <span class="column-dot" style="background: #f59e0b;"></span>
+                  In Progress
+                </h3>
+                <span class="column-count">0</span>
+              </div>
+              <div class="column-content" id="col-in_progress">
+                <!-- Cards aqui -->
+              </div>
+              <button class="btn-add-card" data-column="in_progress">+ Adicionar</button>
+            </div>
+
+            <div class="kanban-column" data-status="review">
+              <div class="column-header">
+                <h3>
+                  <span class="column-dot" style="background: #8b5cf6;"></span>
+                  Review
+                </h3>
+                <span class="column-count">0</span>
+              </div>
+              <div class="column-content" id="col-review">
+                <!-- Cards aqui -->
+              </div>
+              <button class="btn-add-card" data-column="review">+ Adicionar</button>
+            </div>
+
+            <div class="kanban-column" data-status="done">
+              <div class="column-header">
+                <h3>
+                  <span class="column-dot" style="background: #10b981;"></span>
+                  Done
+                </h3>
+                <span class="column-count">0</span>
+              </div>
+              <div class="column-content" id="col-done">
+                <!-- Cards aqui -->
+              </div>
+              <button class="btn-add-card" data-column="done">+ Adicionar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard View -->
+        <div class="view view-dashboard" id="dashboardView">
+          <div class="dashboard-grid">
+            <div class="metric-card">
+              <div class="metric-icon">📊</div>
+              <div class="metric-info">
+                <span class="metric-value" id="metricTotal">0</span>
+                <span class="metric-label">Total de Tarefas</span>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon">✅</div>
+              <div class="metric-info">
+                <span class="metric-value" id="metricCompleted">0</span>
+                <span class="metric-label">Concluídas Hoje</span>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon">⏱️</div>
+              <div class="metric-info">
+                <span class="metric-value" id="metricAvgTime">0h</span>
+                <span class="metric-label">Tempo Médio</span>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon">📈</div>
+              <div class="metric-info">
+                <span class="metric-value" id="metricRate">0%</span>
+                <span class="metric-label">Taxa de Conclusão</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-charts">
+            <div class="chart-container">
+              <h3>Por Status</h3>
+              <div class="chart" id="statusChart"></div>
+            </div>
+            <div class="chart-container">
+              <h3>Por Prioridade</h3>
+              <div class="chart" id="priorityChart"></div>
+            </div>
+          </div>
+
+          <div class="activity-feed">
+            <h3>Atividades Recentes</h3>
+            <div id="activityList" class="activity-list">
+              <!-- Atividades serão carregadas aqui -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Randy View -->
+        <div class="view view-randy" id="randyView">
+          <div class="randy-header">
+            <div class="randy-stats">
+              <div class="randy-stat">
+                <span class="stat-value" id="randyTotal">0</span>
+                <span class="stat-label">Total</span>
+              </div>
+              <div class="randy-stat">
+                <span class="stat-value" id="randyInProgress">0</span>
+                <span class="stat-label">Em Progresso</span>
+              </div>
+              <div class="randy-stat">
+                <span class="stat-value" id="randyDone">0</span>
+                <span class="stat-label">Concluídas</span>
+              </div>
+            </div>
+          </div>
+          <div class="randy-tasks" id="randyTasks">
+            <!-- Tarefas do Randy -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal de Tarefa -->
+  <div class="modal" id="taskModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Nova Tarefa</h2>
+        <button class="modal-close" id="modalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="taskForm">
+          <input type="hidden" id="taskId">
+          
+          <div class="form-group">
+            <label for="taskTitle">Título *</label>
+            <input type="text" id="taskTitle" required placeholder="Nome da tarefa">
+          </div>
+
+          <div class="form-group">
+            <label for="taskDescription">Descrição</label>
+            <textarea id="taskDescription" rows="3" placeholder="Descrição detalhada..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="taskStatus">Status</label>
+              <select id="taskStatus">
+                <option value="backlog">Backlog</option>
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="review">Review</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="taskPriority">Prioridade</label>
+              <select id="taskPriority">
+                <option value="low">Baixa</option>
+                <option value="medium">Média</option>
+                <option value="high">Alta</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="taskProject">Projeto</label>
+              <select id="taskProject">
+                <!-- Projetos serão carregados -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="taskAssignee">Atribuído a</label>
+              <select id="taskAssignee">
+                <option value="">Não atribuído</option>
+                <option value="randy">Randy 🤖</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="taskTags">Tags (separadas por vírgula)</label>
+            <input type="text" id="taskTags" placeholder="bug, feature, urgent">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="taskEstimated">Horas Estimadas</label>
+              <input type="number" id="taskEstimated" min="0" step="0.5">
+            </div>
+
+            <div class="form-group">
+              <label for="taskActual">Horas Reais</label>
+              <input type="number" id="taskActual" min="0" step="0.5">
+            </div>
+          </div>
+        </form>
+
+        <!-- Seção de Comentários -->
+        <div class="comments-section" id="commentsSection" style="display: none;">
+          <h3>Comentários</h3>
+          <div class="comments-list" id="commentsList"></div>
+          <div class="comment-form">
+            <input type="text" id="newComment" placeholder="Adicionar comentário...">
+            <button id="btnAddComment">Enviar</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnCancel">Cancelar</button>
+        <button type="button" class="btn-danger" id="btnDelete" style="display: none;">Excluir</button>
+        <button type="submit" class="btn-primary" id="btnSave">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Projeto -->
+  <div class="modal" id="projectModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Novo Projeto</h2>
+        <button class="modal-close" id="projectModalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="projectForm">
+          <div class="form-group">
+            <label for="projectName">Nome *</label>
+            <input type="text" id="projectName" required>
+          </div>
+          <div class="form-group">
+            <label for="projectDescription">Descrição</label>
+            <textarea id="projectDescription" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="projectColor">Cor</label>
+            <input type="color" id="projectColor" value="#6366f1">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnCancelProject">Cancelar</button>
+        <button type="submit" class="btn-primary" id="btnSaveProject">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/modal.js"></script>
+  <script src="js/kanban.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

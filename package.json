@@ -1,0 +1,12 @@
+{
+  "name": "mission-control-kanban",
+  "version": "1.0.0",
+  "description": "Kanban board task management system for Randy",
+  "scripts": {
+    "build": "cd backend && npm install",
+    "start": "cd backend && npm start"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
