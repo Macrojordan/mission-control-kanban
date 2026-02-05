@@ -62,7 +62,7 @@ router.post('/tasks/:id/complete', async (req, res) => {
 
     await runQuery(`
       UPDATE tasks 
-      SET status = 'done', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      SET status = 'done', randy_status = 'completed', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND assigned_to = 'randy'
     `, [req.params.id]);
 
@@ -80,7 +80,7 @@ router.post('/tasks/:id/complete', async (req, res) => {
 // Randy atualiza progresso de uma tarefa
 router.post('/tasks/:id/progress', async (req, res) => {
   try {
-    const { status, actual_hours, comment } = req.body;
+    const { status, actual_hours, comment, randy_status } = req.body;
     
     const task = await getQuery('SELECT * FROM tasks WHERE id = ?', [req.params.id]);
     if (!task) {
@@ -93,10 +93,20 @@ router.post('/tasks/:id/progress', async (req, res) => {
     if (status) {
       updates.push('status = ?');
       values.push(status);
+      // Set completed_at when task is marked as done
+      if (status === 'done') {
+        updates.push('completed_at = ?');
+        values.push(new Date().toISOString());
+        updates.push("randy_status = 'completed'");
+      }
     }
     if (actual_hours !== undefined) {
       updates.push('actual_hours = ?');
       values.push(actual_hours);
+    }
+    if (randy_status !== undefined) {
+      updates.push('randy_status = ?');
+      values.push(randy_status);
     }
     values.push(req.params.id);
 

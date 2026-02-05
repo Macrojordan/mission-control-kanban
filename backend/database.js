@@ -42,6 +42,7 @@ function initDatabase() {
         description TEXT,
         status TEXT DEFAULT 'backlog',
         priority TEXT DEFAULT 'medium',
+        randy_status TEXT DEFAULT 'pending',
         project_id INTEGER,
         assigned_to TEXT,
         tags TEXT,
@@ -114,6 +115,15 @@ function initDatabase() {
     `);
 
     console.log('✅ Banco de dados inicializado');
+  });
+
+  // Migração simples para adicionar colunas novas
+  database.all(`PRAGMA table_info(tasks)`, (err, columns) => {
+    if (err || !columns) return;
+    const columnNames = columns.map(col => col.name);
+    if (!columnNames.includes('randy_status')) {
+      database.run(`ALTER TABLE tasks ADD COLUMN randy_status TEXT DEFAULT 'pending'`);
+    }
   });
 }
 

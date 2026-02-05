@@ -63,6 +63,10 @@
       <header class="header">
         <div class="header-left">
           <h1 id="pageTitle">Kanban Board</h1>
+          <div class="status-indicator" id="statusIndicator">
+            <span class="status-dot" id="statusDot"></span>
+            <span class="status-text" id="statusText">Randy Online</span>
+          </div>
           <span class="header-subtitle" id="headerSubtitle"></span>
         </div>
         <div class="header-right">
@@ -101,6 +105,7 @@
           <select id="filterAssignee">
             <option value="">Todos</option>
             <option value="randy">Randy</option>
+            <option value="ruben">Ruben</option>
             <option value="unassigned">Não atribuído</option>
           </select>
         </div>
@@ -253,6 +258,7 @@
                 <span class="stat-label">Concluídas</span>
               </div>
             </div>
+            <div class="randy-current" id="randyCurrentTask"></div>
           </div>
           <div class="randy-tasks" id="randyTasks">
             <!-- Tarefas do Randy -->
@@ -319,6 +325,7 @@
               <select id="taskAssignee">
                 <option value="">Não atribuído</option>
                 <option value="randy">Randy 🤖</option>
+                <option value="ruben">Ruben</option>
               </select>
             </div>
           </div>
@@ -338,6 +345,16 @@
               <label for="taskActual">Horas Reais</label>
               <input type="number" id="taskActual" min="0" step="0.5">
             </div>
+          </div>
+
+          <div class="form-group">
+            <label for="taskRandyStatus">Status Randy</label>
+            <select id="taskRandyStatus">
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+            </select>
           </div>
         </form>
 

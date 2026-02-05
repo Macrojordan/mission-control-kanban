@@ -301,6 +301,36 @@ body {
   font-size: 14px;
 }
 
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+}
+
+.status-indicator.offline {
+  color: var(--accent-danger);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.status-dot.offline {
+  background: var(--accent-danger);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -624,6 +654,13 @@ body {
   overflow: hidden;
 }
 
+.task-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-left: 8px;
+  margin-bottom: 8px;
+}
+
 .task-menu {
   opacity: 0;
   background: none;
@@ -688,6 +725,36 @@ body {
   padding-left: 8px;
   padding-top: 10px;
   border-top: 1px solid var(--border-color);
+}
+
+.task-randy-status {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.task-randy-status.status-in-progress {
+  color: var(--accent-warning);
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.task-randy-status.status-completed {
+  color: var(--accent-success);
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.task-randy-status.status-failed {
+  color: var(--accent-danger);
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.task-randy-status.status-pending {
+  color: var(--accent-info);
+  background: rgba(59, 130, 246, 0.2);
 }
 
 .task-stats {
@@ -809,6 +876,7 @@ body {
   height: 100%;
   border-radius: var(--radius-sm);
   transition: width 0.5s ease;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
 }
 
 .chart-value {
@@ -882,6 +950,16 @@ body {
 
 .randy-header {
   margin-bottom: 24px;
+}
+
+.randy-current {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
 }
 
 .randy-stats {

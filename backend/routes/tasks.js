@@ -112,16 +112,17 @@ router.get('/:id', async (req, res) => {
 // Criar nova tarefa
 router.post('/', async (req, res) => {
   try {
-    const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours } = req.body;
+    const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, randy_status } = req.body;
     
     const result = await runQuery(`
-      INSERT INTO tasks (title, description, status, priority, project_id, assigned_to, tags, estimated_hours)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tasks (title, description, status, priority, randy_status, project_id, assigned_to, tags, estimated_hours)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       title,
       description,
       status || 'backlog',
       priority || 'medium',
+      randy_status || 'pending',
       project_id || 1,
       assigned_to,
       tags ? JSON.stringify(tags) : '[]',
@@ -144,7 +145,7 @@ router.post('/', async (req, res) => {
 // Atualizar tarefa
 router.put('/:id', async (req, res) => {
   try {
-    const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours } = req.body;
+    const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours, randy_status } = req.body;
     
     // Buscar tarefa atual
     const currentTask = await getQuery('SELECT * FROM tasks WHERE id = ?', [req.params.id]);
@@ -176,6 +177,7 @@ router.put('/:id', async (req, res) => {
       }
     }
     if (priority !== undefined) { updates.push('priority = ?'); values.push(priority); }
+    if (randy_status !== undefined) { updates.push('randy_status = ?'); values.push(randy_status); }
     if (project_id !== undefined) { updates.push('project_id = ?'); values.push(project_id); }
     if (assigned_to !== undefined) { 
       updates.push('assigned_to = ?'); 
@@ -207,10 +209,21 @@ router.put('/:id', async (req, res) => {
 router.patch('/:id/move', async (req, res) => {
   try {
     const { status, position } = req.body;
-    
+
+    const updates = ['status = ?', 'updated_at = CURRENT_TIMESTAMP'];
+    const values = [status];
+
+    if (status === 'done') {
+      updates.push('completed_at = ?');
+      values.push(new Date().toISOString());
+      updates.push(`randy_status = 'completed'`);
+    }
+
+    values.push(req.params.id);
+
     await runQuery(`
-      UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-    `, [status, req.params.id]);
+      UPDATE tasks SET ${updates.join(', ')} WHERE id = ?
+    `, values);
 
     const task = await getQuery('SELECT * FROM tasks WHERE id = ?', [req.params.id]);
     

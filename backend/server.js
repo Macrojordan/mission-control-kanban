@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 const { initDatabase } = require('./database');
 
 const app = express();
-const PORT = process.env.PORT || 3456;
+const PORT = process.env.PORT || 3000;
 
 // Rate limiting
 const limiter = rateLimit({
