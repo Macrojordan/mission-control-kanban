@@ -48,6 +48,7 @@ app.use(checkPassword);
 // Static files (now protected)
 app.use(cors());
 app.use(express.static(path.join(__dirname, '../frontend')));
+app.use('/assets', express.static(path.join(__dirname, '../frontend/assets')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Auth endpoints

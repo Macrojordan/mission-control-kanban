@@ -121,6 +121,36 @@ body {
   font-size: 24px;
 }
 
+/* Randy Avatar Styles */
+.randy-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-primary);
+}
+
+.randy-nav-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px;
+}
+
+.randy-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-secondary);
+}
+
+.sidebar.collapsed .randy-avatar,
+.sidebar.collapsed .randy-nav-avatar {
+  margin: 0;
+}
+
 .logo-text {
   font-size: 18px;
   font-weight: 700;
