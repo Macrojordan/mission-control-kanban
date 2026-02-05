@@ -606,11 +606,123 @@
 
   function init() {
     bindEvents();
+    setupMobileFAB();
+    setupPullToRefresh();
+    setupOfflineDetection();
     setView('kanban');
     refreshData();
     refreshHeartbeat();
     setInterval(refreshData, 15000);
     setInterval(refreshHeartbeat, 5000);
+  }
+
+  // Mobile Floating Action Button
+  function setupMobileFAB() {
+    if (window.innerWidth <= 768) {
+      const fab = document.createElement('button');
+      fab.className = 'fab-mobile';
+      fab.innerHTML = '+';
+      fab.title = 'Nova Tarefa';
+      fab.addEventListener('click', () => openTaskModal());
+      document.body.appendChild(fab);
+    }
+  }
+
+  // Pull to Refresh for Mobile
+  function setupPullToRefresh() {
+    let touchStartY = 0;
+    let touchEndY = 0;
+    const minSwipeDistance = 100;
+    
+    document.addEventListener('touchstart', (e) => {
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+    
+    document.addEventListener('touchend', (e) => {
+      touchEndY = e.changedTouches[0].screenY;
+      handleSwipe();
+    }, { passive: true });
+    
+    function handleSwipe() {
+      const swipeDistance = touchEndY - touchStartY;
+      const isAtTop = window.scrollY === 0;
+      
+      if (swipeDistance > minSwipeDistance && isAtTop) {
+        showRefreshIndicator();
+        refreshData().then(() => hideRefreshIndicator());
+      }
+    }
+  }
+
+  function showRefreshIndicator() {
+    const indicator = document.createElement('div');
+    indicator.id = 'refresh-indicator';
+    indicator.innerHTML = '🔄 Atualizando...';
+    indicator.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--accent-primary);
+      color: white;
+      text-align: center;
+      padding: 12px;
+      z-index: 9999;
+      font-size: 14px;
+      font-weight: 500;
+    `;
+    document.body.appendChild(indicator);
+  }
+
+  function hideRefreshIndicator() {
+    const indicator = document.getElementById('refresh-indicator');
+    if (indicator) {
+      indicator.style.opacity = '0';
+      indicator.style.transition = 'opacity 0.3s';
+      setTimeout(() => indicator.remove(), 300);
+    }
+  }
+
+  // Offline Detection
+  function setupOfflineDetection() {
+    window.addEventListener('online', () => {
+      state.offline = false;
+      showNotification('🟢 Conexão restaurada', 'success');
+      refreshData();
+    });
+    
+    window.addEventListener('offline', () => {
+      state.offline = true;
+      showNotification('🔴 Sem conexão - Modo offline', 'warning');
+    });
+  }
+
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: ${type === 'success' ? 'var(--accent-success)' : type === 'warning' ? 'var(--accent-warning)' : 'var(--accent-info)'};
+      color: white;
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      z-index: 10000;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: slideUp 0.3s ease;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      notification.style.transition = 'opacity 0.3s';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
   }
 
   init();

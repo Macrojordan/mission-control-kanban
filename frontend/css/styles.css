@@ -31,10 +31,46 @@
   --transition: all 0.2s ease;
 }
 
+/* Animations */
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+/* Notification Styles */
+.notification {
+  animation: slideUp 0.3s ease;
+}
+
+.notification-success { background: var(--accent-success) !important; }
+.notification-warning { background: var(--accent-warning) !important; color: #000 !important; }
+.notification-info { background: var(--accent-info) !important; }
+
+/* FAB - Hidden on desktop by default */
+.fab-mobile {
+  display: none;
 }
 
 body {
@@ -1519,5 +1555,61 @@ body {
   
   .filter-group {
     justify-content: space-between;
+  }
+  
+  /* Mobile touch improvements */
+  .kanban-task {
+    min-height: 60px;
+    padding: 16px;
+  }
+  
+  .kanban-task .task-title {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  
+  .kanban-task .task-actions button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 12px;
+  }
+  
+  .btn-primary, .btn-secondary {
+    min-height: 44px;
+    padding: 12px 20px;
+  }
+  
+  /* Floating action button for mobile */
+  .fab-mobile {
+    display: flex;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+    font-size: 24px;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    z-index: 1000;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .fab-mobile:active {
+    transform: scale(0.95);
+  }
+  
+  /* Better mobile header */
+  .header-left h1 {
+    font-size: 18px;
+  }
+  
+  .status-indicator {
+    font-size: 12px;
   }
 }
