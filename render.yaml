@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: mission-control
+    runtime: node
+    repo: https://github.com/Macrojordan/mission-control-kanban
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    healthCheckPath: /api/health

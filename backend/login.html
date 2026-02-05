@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Control - Login</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 3rem;
+      border-radius: 1rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+    .logo {
+      font-size: 4rem;
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      color: #1e1b4b;
+      font-size: 1.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 2rem;
+    }
+    .password-input {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      transition: border-color 0.2s;
+    }
+    .password-input:focus {
+      outline: none;
+      border-color: #4f46e5;
+    }
+    .login-btn {
+      width: 100%;
+      padding: 1rem;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .login-btn:hover {
+      background: #4338ca;
+    }
+    .error {
+      color: #dc2626;
+      margin-top: 1rem;
+      display: none;
+    }
+    .crab {
+      animation: bounce 2s infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo crab">🦀</div>
+    <h1>Mission Control</h1>
+    <p class="subtitle">AgentBoss Task Management</p>
+    <input type="password" id="password" class="password-input" placeholder="Enter password..." autofocus>
+    <button class="login-btn" onclick="login()">Enter</button>
+    <p id="error" class="error">Invalid password. Try again.</p>
+  </div>
+
+  <script>
+    document.getElementById('password').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') login();
+    });
+
+    async function login() {
+      const password = document.getElementById('password').value;
+      const error = document.getElementById('error');
+
+      try {
+        const res = await fetch('/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        if (res.ok) {
+          document.cookie = 'auth=authenticated; path=/; max-age=86400';
+          window.location.href = '/';
+        } else {
+          error.style.display = 'block';
+          document.getElementById('password').value = '';
+        }
+      } catch (err) {
+        error.textContent = 'Connection error. Please try again.';
+        error.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
