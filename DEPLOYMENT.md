@@ -1,46 +1,55 @@
 # Mission Control — Deployment Info
 
-**Status:** ✅ LIVE  
-**URL:** https://entirely-archives-motherboard-originally.trycloudflare.com  
-**Last Updated:** 2026-02-05 12:15 BRT
+**Status:** ✅ LIVE ON RENDER  
+**Stable URL:** https://mission-control-ikke.onrender.com  
+**Last Updated:** 2026-02-05
 
 ## How It's Running
 
-**Backend:** PM2 process manager (keeps it alive forever)  
-**Tunnel:** Cloudflare Quick Tunnel (public URL)  
-**Local Port:** localhost:3000
+**Platform:** Render.com (Free Tier)  
+**Backend:** Node.js + Express + SQLite  
+**Frontend:** Static files served by Express  
+**Password Protection:** Enabled
 
-## Commands
+## Access
 
-```bash
-# Check status
-npx pm2 status
+- **URL:** https://mission-control-ikke.onrender.com
+- **Password:** `agentboss2026`
+- **No signup required** — just enter password
 
-# View logs
-npx pm2 logs mission-control
+## Features Available
 
-# Restart if needed
-npx pm2 restart mission-control
-
-# Stop
-npx pm2 stop mission-control
-```
-
-## ⚠️ Important Notes
-
-1. **This URL is temporary** — Cloudflare quick tunnels change on restart
-2. **For a permanent URL** — Need to set up a named tunnel with Cloudflare account
-3. **PM2 auto-start** — Need to run `npx pm2 startup` to survive WSL restarts
-
-## What's Working
-- ✅ Kanban board (create, move, edit tasks)
+- ✅ Kanban board (Todo → Doing → Review → Done)
+- ✅ Create, edit, move, delete tasks
 - ✅ Task priorities (low/medium/high/urgent)
+- ✅ Project organization
 - ✅ Randy status tracking
 - ✅ File attachments
-- ✅ Comments
-- ✅ Projects
+- ✅ Comments on tasks
+- ✅ Mobile responsive (FAB, pull-to-refresh)
+- ✅ Password protection
 
-## Next Improvements
-- [ ] Set up persistent Cloudflare tunnel (custom domain)
-- [ ] Configure PM2 auto-start on boot
-- [ ] Railway/Render deployment for true 24/7 uptime
+## Sync with Local
+
+The Render instance has its own database. To sync with local WSL2 instance:
+
+1. Export local data: `sqlite3 data/mission_control.db .dump > backup.sql`
+2. Import to Render: (requires SSH or database access)
+
+**Or:** Start fresh on Render — the backlog tasks are in GitHub.
+
+## What's Next
+
+- [ ] Import backlog tasks from local DB
+- [ ] Set up auto-deploy on git push
+- [ ] Custom domain (missioncontrol.agentboss.ai)
+
+## Local Development (WSL2)
+
+Still running on localhost:3000 for development:
+```bash
+cd ~/.openclaw/workspace/mission-control/backend
+npm start
+```
+
+Local URL: http://localhost:3000
