@@ -1,4 +1,33 @@
 (function() {
+  const STATUS_DEFINITIONS = [
+    { key: 'backlog', label: 'Backlog' },
+    { key: 'todo', label: 'To Do' },
+    { key: 'in_progress', label: 'In Progress' },
+    { key: 'review', label: 'Review' },
+    { key: 'done', label: 'Done' }
+  ];
+
+  const STATUS_LOOKUP = STATUS_DEFINITIONS.reduce((acc, status) => {
+    acc[status.key] = status.label;
+    return acc;
+  }, {});
+
+  function getStatusOrder() {
+    return STATUS_DEFINITIONS.map(status => status.key);
+  }
+
+  function isValidStatus(status) {
+    return !!STATUS_LOOKUP[status];
+  }
+
+  function normalizeStatus(status) {
+    return isValidStatus(status) ? status : 'backlog';
+  }
+
+  function getStatusLabel(status) {
+    return STATUS_LOOKUP[status] || status || 'Backlog';
+  }
+
   function createTaskCard(task, options) {
     const card = document.createElement('div');
     card.className = 'task-card';
@@ -62,6 +91,10 @@
 
   window.MissionControl = window.MissionControl || {};
   window.MissionControl.Kanban = {
-    createTaskCard
+    createTaskCard,
+    getStatusOrder,
+    getStatusLabel,
+    isValidStatus,
+    normalizeStatus
   };
 })();

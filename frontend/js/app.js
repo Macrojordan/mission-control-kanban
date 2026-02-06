@@ -204,6 +204,13 @@
     }
   }
 
+  function formatStatusLabel(status) {
+    if (Kanban && typeof Kanban.getStatusLabel === 'function') {
+      return Kanban.getStatusLabel(status);
+    }
+    return status || 'Backlog';
+  }
+
   function buildNotionUrl(pageId) {
     if (!pageId) return '';
     return `https://www.notion.so/${pageId.replace(/-/g, '')}`;
@@ -349,7 +356,9 @@
 
   function applyTemplateData(data) {
     if (!data) return;
-    if (data.status && elements.taskStatus) elements.taskStatus.value = data.status;
+    if (data.status && elements.taskStatus) {
+      elements.taskStatus.value = Kanban.normalizeStatus ? Kanban.normalizeStatus(data.status) : data.status;
+    }
     if (data.priority && elements.taskPriority) elements.taskPriority.value = data.priority;
     if (data.assigned_to !== undefined && elements.taskAssignee) elements.taskAssignee.value = data.assigned_to;
     if (data.tags && elements.taskTags) elements.taskTags.value = data.tags.join(', ');
@@ -440,8 +449,10 @@
   function normalizeTask(task) {
     const project = state.projects.find(p => String(p.id) === String(task.project_id));
     const normalizedRandy = (task.randy_status || 'pending').replace('_', '-');
+    const normalizedStatus = Kanban && Kanban.normalizeStatus ? Kanban.normalizeStatus(task.status) : (task.status || 'backlog');
     return {
       ...task,
+      status: normalizedStatus,
       project_name: task.project_name || (project ? project.name : 'Geral'),
       project_color: task.project_color || (project ? project.color : '#6366f1'),
       tags: Array.isArray(task.tags) ? task.tags : task.tags ? task.tags.split(',').map(tag => tag.trim()) : [],
@@ -730,7 +741,7 @@
     data.forEach(item => {
       const bar = document.createElement('div');
       bar.className = 'chart-bar';
-      const label = type === 'status' ? item.status : item.priority;
+      const label = type === 'status' ? formatStatusLabel(item.status) : item.priority;
       const maxCount = Math.max(...data.map(entry => entry.count || 0), 1);
       const width = Math.round(((item.count || 0) / maxCount) * 100);
       bar.innerHTML = `
@@ -782,13 +793,14 @@
     randyTasks.forEach(task => {
       const card = document.createElement('div');
       card.className = `randy-task-card ${task.status === 'done' ? 'done' : ''}`;
+      const statusLabel = formatStatusLabel(task.status);
       card.innerHTML = `
         <div class="randy-task-header">
           <div class="randy-task-title">${task.title}</div>
           <span class="randy-task-priority ${task.priority}">${task.priority}</span>
         </div>
         <div class="randy-task-meta">
-          <span>Status: ${task.status}</span>
+          <span>Status: ${statusLabel}</span>
           <span>Randy: ${task.randy_status || 'pending'}</span>
         </div>
         <p>${task.description || 'Sem descrição.'}</p>
@@ -840,7 +852,8 @@
     elements.taskId.value = isEdit ? task.id : '';
     elements.taskTitle.value = isEdit ? task.title : (draft.title || '');
     elements.taskDescription.value = isEdit ? task.description || '' : (draft.description || '');
-    elements.taskStatus.value = isEdit ? task.status : draft.status || 'backlog';
+    const resolvedStatus = isEdit ? task.status : (draft.status || 'backlog');
+    elements.taskStatus.value = Kanban.normalizeStatus ? Kanban.normalizeStatus(resolvedStatus) : resolvedStatus;
     elements.taskPriority.value = isEdit ? task.priority || 'medium' : draft.priority || 'medium';
     elements.taskProject.value = isEdit ? task.project_id || 1 : draft.project_id || 1;
     elements.taskAssignee.value = isEdit ? task.assigned_to || '' : draft.assigned_to || '';

@@ -3,6 +3,8 @@ const router = express.Router();
 const { allQuery, getQuery, runQuery, isConnected } = require('../database');
 const { logActivity, notifyRandy } = require('../middleware/notifications');
 
+const VALID_STATUSES = new Set(['backlog', 'todo', 'in_progress', 'review', 'done']);
+
 // Listar todas as tarefas
 router.get('/', async (req, res) => {
   // Return empty array if database not connected (frontend will use localStorage)
@@ -130,6 +132,10 @@ router.post('/', async (req, res) => {
 
   try {
     const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours, randy_status, due_date, notion_link, notion_page_id } = req.body;
+    const resolvedStatus = status || 'backlog';
+    if (!VALID_STATUSES.has(resolvedStatus)) {
+      return res.status(400).json({ error: `Status inválido: ${resolvedStatus}` });
+    }
     
     const result = await runQuery(`
       INSERT INTO tasks (title, description, status, priority, randy_status, project_id, assigned_to, tags, estimated_hours, actual_hours, due_date, notion_link, notion_page_id, completed_at)
@@ -138,7 +144,7 @@ router.post('/', async (req, res) => {
     `, [
       title,
       description,
-      status || 'backlog',
+      resolvedStatus,
       priority || 'medium',
       randy_status || 'pending',
       project_id || 1,
@@ -149,7 +155,7 @@ router.post('/', async (req, res) => {
       due_date || null,
       notion_link || null,
       notion_page_id || null,
-      status === 'done' ? new Date().toISOString() : null
+      resolvedStatus === 'done' ? new Date().toISOString() : null
     ]);
 
     const task = result.rows[0];
@@ -175,6 +181,9 @@ router.put('/:id', async (req, res) => {
 
   try {
     const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours, randy_status, due_date, notion_link, notion_page_id } = req.body;
+    if (status !== undefined && !VALID_STATUSES.has(status)) {
+      return res.status(400).json({ error: `Status inválido: ${status}` });
+    }
     
     // Buscar tarefa atual
     const currentTask = await getQuery('SELECT * FROM tasks WHERE id = $1', [req.params.id]);
@@ -247,6 +256,9 @@ router.patch('/:id/move', async (req, res) => {
 
   try {
     const { status, position } = req.body;
+    if (!VALID_STATUSES.has(status)) {
+      return res.status(400).json({ error: `Status inválido: ${status}` });
+    }
 
     const updates = ['status = $1', 'updated_at = CURRENT_TIMESTAMP'];
     const values = [status];
