@@ -1664,10 +1664,37 @@ body {
   .dashboard-charts {
     grid-template-columns: 1fr;
   }
+
+  .kanban-board {
+    flex-direction: column;
+    overflow-x: hidden;
+  }
   
   .kanban-column {
-    min-width: 200px;
+    min-width: 100%;
     max-width: none;
+    width: 100%;
+  }
+
+  .task-card {
+    width: 100%;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-filter,
+  .btn-add-card {
+    min-height: 44px;
+  }
+
+  .nav-item,
+  .project-item {
+    min-height: 44px;
+  }
+
+  .sidebar-toggle {
+    width: 44px;
+    height: 44px;
   }
   
   .randy-stats {
@@ -1703,8 +1730,8 @@ body {
   }
   
   .kanban-column {
-    min-width: 240px;
-    max-width: 240px;
+    min-width: 100%;
+    max-width: none;
   }
   
   .filters-bar.visible {

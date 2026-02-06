@@ -647,7 +647,11 @@
   function bindEvents() {
     if (elements.sidebarToggle) {
       elements.sidebarToggle.addEventListener('click', () => {
-        elements.sidebar.classList.toggle('collapsed');
+        if (window.innerWidth <= 1024) {
+          elements.sidebar.classList.toggle('open');
+        } else {
+          elements.sidebar.classList.toggle('collapsed');
+        }
       });
     }
 
@@ -656,6 +660,9 @@
         event.preventDefault();
         const view = item.dataset.view;
         setView(view);
+        if (window.innerWidth <= 1024) {
+          elements.sidebar.classList.remove('open');
+        }
       });
     });
 
@@ -760,6 +767,12 @@
       if (taskModal && taskModal.modal && taskModal.modal.classList.contains('active')) return;
       event.preventDefault();
       openTaskModal(null);
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 1024) {
+        elements.sidebar.classList.remove('open');
+      }
     });
 
     bindDragAndDrop();
