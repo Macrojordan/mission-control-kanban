@@ -654,13 +654,14 @@ body {
   display: flex;
   gap: 20px;
   height: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
   padding-bottom: 8px;
 }
 
 .kanban-column {
-  min-width: 300px;
-  max-width: 300px;
+  flex: 1 1 0;
+  min-width: 190px;
+  max-width: none;
   background: var(--bg-secondary);
   border-radius: var(--radius-lg);
   display: flex;
@@ -1571,8 +1572,14 @@ body {
   }
   
   .kanban-column {
-    min-width: 280px;
-    max-width: 280px;
+    min-width: 180px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .kanban-board {
+    overflow-x: auto;
   }
 }
 
@@ -1603,8 +1610,8 @@ body {
   }
   
   .kanban-column {
-    min-width: 260px;
-    max-width: 260px;
+    min-width: 200px;
+    max-width: none;
   }
   
   .randy-stats {
