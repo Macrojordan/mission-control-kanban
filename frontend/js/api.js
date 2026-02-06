@@ -1,6 +1,6 @@
 (function() {
   const API_BASE = '/api';
-  const DEFAULT_TIMEOUT = 5000;
+  const DEFAULT_TIMEOUT = 30000; // 30s for Render cold start
   const STORAGE_KEYS = {
     tasks: 'mc_tasks',
     projects: 'mc_projects',
