@@ -767,6 +767,7 @@ body {
 .task-priority.high { background: var(--accent-danger); }
 .task-priority.medium { background: var(--accent-warning); }
 .task-priority.low { background: var(--accent-success); }
+.task-priority.urgent { background: #ef4444; }
 
 .task-header {
   display: flex;
@@ -1167,6 +1168,11 @@ body {
   color: var(--accent-danger);
 }
 
+.randy-task-priority.urgent {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
 .randy-task-priority.medium {
   background: rgba(245, 158, 11, 0.2);
   color: var(--accent-warning);
@@ -1245,7 +1251,8 @@ body {
   padding: 20px;
 }
 
-.modal.visible {
+.modal.visible,
+.modal.active {
   display: flex;
 }
 
@@ -1317,6 +1324,55 @@ body {
   overflow-y: auto;
   flex: 1;
 }
+
+.quick-add {
+  padding: 12px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  margin-bottom: 20px;
+}
+
+.quick-add label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.quick-add-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.select-with-indicator {
+  position: relative;
+}
+
+.select-with-indicator select {
+  padding-left: 36px;
+}
+
+.priority-indicator {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 2px solid var(--bg-secondary);
+}
+
+.priority-indicator.urgent { background: #ef4444; }
+.priority-indicator.high { background: var(--accent-danger); }
+.priority-indicator.medium { background: var(--accent-warning); }
+.priority-indicator.low { background: var(--accent-success); }
 
 .modal-footer {
   display: flex;

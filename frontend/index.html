@@ -96,6 +96,7 @@
           <label>Prioridade:</label>
           <select id="filterPriority">
             <option value="">Todas</option>
+            <option value="urgent">Urgente</option>
             <option value="high">Alta</option>
             <option value="medium">Média</option>
             <option value="low">Baixa</option>
@@ -284,6 +285,14 @@
         <button class="modal-close" id="modalClose">×</button>
       </div>
       <div class="modal-body">
+        <div class="quick-add">
+          <label for="taskQuickTitle">Quick add (Enter para Backlog)</label>
+          <div class="quick-add-row">
+            <input type="text" id="taskQuickTitle" placeholder="Título rápido da tarefa">
+            <button type="button" class="btn-secondary" id="btnQuickAdd">Adicionar</button>
+          </div>
+        </div>
+
         <form id="taskForm">
           <input type="hidden" id="taskId">
           
@@ -311,11 +320,15 @@
 
             <div class="form-group">
               <label for="taskPriority">Prioridade</label>
-              <select id="taskPriority">
-                <option value="low">Baixa</option>
-                <option value="medium">Média</option>
-                <option value="high">Alta</option>
-              </select>
+              <div class="select-with-indicator">
+                <span class="priority-indicator" id="taskPriorityIndicator"></span>
+                <select id="taskPriority">
+                  <option value="urgent">Urgente</option>
+                  <option value="high">Alta</option>
+                  <option value="medium">Média</option>
+                  <option value="low">Baixa</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -340,6 +353,18 @@
           <div class="form-group">
             <label for="taskTags">Tags (separadas por vírgula)</label>
             <input type="text" id="taskTags" placeholder="bug, feature, urgent">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="taskDueDate">Data de entrega</label>
+              <input type="date" id="taskDueDate">
+            </div>
+
+            <div class="form-group">
+              <label for="taskNotionLink">Notion Link</label>
+              <input type="url" id="taskNotionLink" placeholder="https://www.notion.so/...">
+            </div>
           </div>
 
           <div class="form-row">

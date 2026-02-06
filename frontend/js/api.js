@@ -354,6 +354,8 @@
             project_id: payload.project_id || 1,
             assigned_to: payload.assigned_to || '',
             tags: payload.tags || [],
+            due_date: payload.due_date || null,
+            notion_link: payload.notion_link || null,
             created_at: now,
             updated_at: now,
             completed_at: payload.status === 'done' ? now : null,

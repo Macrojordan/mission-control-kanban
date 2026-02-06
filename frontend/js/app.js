@@ -74,9 +74,12 @@
     taskDescription: document.getElementById('taskDescription'),
     taskStatus: document.getElementById('taskStatus'),
     taskPriority: document.getElementById('taskPriority'),
+    taskPriorityIndicator: document.getElementById('taskPriorityIndicator'),
     taskProject: document.getElementById('taskProject'),
     taskAssignee: document.getElementById('taskAssignee'),
     taskTags: document.getElementById('taskTags'),
+    taskDueDate: document.getElementById('taskDueDate'),
+    taskNotionLink: document.getElementById('taskNotionLink'),
     taskEstimated: document.getElementById('taskEstimated'),
     taskActual: document.getElementById('taskActual'),
     taskRandyStatus: document.getElementById('taskRandyStatus'),
@@ -84,6 +87,8 @@
     btnSave: document.getElementById('btnSave'),
     btnDelete: document.getElementById('btnDelete'),
     btnCancel: document.getElementById('btnCancel'),
+    btnQuickAdd: document.getElementById('btnQuickAdd'),
+    taskQuickTitle: document.getElementById('taskQuickTitle'),
     commentsSection: document.getElementById('commentsSection'),
     commentsList: document.getElementById('commentsList'),
     newComment: document.getElementById('newComment'),
@@ -124,6 +129,24 @@
     if (!value) return '';
     const date = new Date(value);
     return date.toLocaleString();
+  }
+
+  function toDateInputValue(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function updatePriorityIndicator(value) {
+    if (!elements.taskPriorityIndicator) return;
+    elements.taskPriorityIndicator.className = 'priority-indicator';
+    if (value) {
+      elements.taskPriorityIndicator.classList.add(value);
+    }
   }
 
   function normalizeTask(task) {
@@ -310,7 +333,8 @@
     );
     elements.filterProject.innerHTML = projectOptions.join('');
 
-    const taskProjectOptions = projects.map(project => `<option value="${project.id}">${project.name}</option>`);
+    const taskProjectSource = activeProjects.length ? activeProjects : projects;
+    const taskProjectOptions = taskProjectSource.map(project => `<option value="${project.id}">${project.name}</option>`);
     elements.taskProject.innerHTML = taskProjectOptions.join('');
   }
 
@@ -435,11 +459,22 @@
     elements.taskProject.value = isEdit ? task.project_id || 1 : 1;
     elements.taskAssignee.value = isEdit ? task.assigned_to || '' : '';
     elements.taskTags.value = isEdit ? (task.tags || []).join(', ') : '';
+    if (elements.taskDueDate) {
+      elements.taskDueDate.value = isEdit ? toDateInputValue(task.due_date) : '';
+    }
+    if (elements.taskNotionLink) {
+      elements.taskNotionLink.value = isEdit ? task.notion_link || '' : '';
+    }
     elements.taskEstimated.value = isEdit && task.estimated_hours ? task.estimated_hours : '';
     elements.taskActual.value = isEdit && task.actual_hours ? task.actual_hours : '';
     if (elements.taskRandyStatus) {
       elements.taskRandyStatus.value = isEdit ? (task.randy_status || 'pending') : 'pending';
     }
+    if (elements.taskQuickTitle) {
+      elements.taskQuickTitle.value = '';
+    }
+
+    updatePriorityIndicator(elements.taskPriority.value);
 
     if (isEdit) {
       loadComments(task.id);
@@ -480,6 +515,8 @@
       project_id: parseInt(elements.taskProject.value, 10),
       assigned_to: elements.taskAssignee.value,
       tags: elements.taskTags.value ? elements.taskTags.value.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+      due_date: elements.taskDueDate ? (elements.taskDueDate.value || null) : null,
+      notion_link: elements.taskNotionLink && elements.taskNotionLink.value.trim() ? elements.taskNotionLink.value.trim() : null,
       estimated_hours: elements.taskEstimated.value ? parseFloat(elements.taskEstimated.value) : null,
       actual_hours: elements.taskActual.value ? parseFloat(elements.taskActual.value) : null,
       randy_status: elements.taskRandyStatus ? elements.taskRandyStatus.value : 'pending'
@@ -498,6 +535,31 @@
 
     await refreshData();
     taskModal.close();
+  }
+
+  async function quickAddTask() {
+    if (!elements.taskQuickTitle) return;
+    const title = elements.taskQuickTitle.value.trim();
+    if (!title) {
+      alert('Título é obrigatório.');
+      return;
+    }
+
+    const projectId = elements.taskProject && elements.taskProject.value ? parseInt(elements.taskProject.value, 10) : 1;
+    const payload = {
+      title,
+      status: 'backlog',
+      priority: 'medium',
+      project_id: Number.isNaN(projectId) ? 1 : projectId,
+      assigned_to: '',
+      tags: [],
+      randy_status: 'pending'
+    };
+
+    await Api.createTask(payload);
+    elements.taskQuickTitle.value = '';
+    await refreshData();
+    showNotification('Tarefa adicionada ao Backlog', 'success');
   }
 
   async function deleteTask() {
@@ -576,6 +638,12 @@
     });
   }
 
+  function isTypingTarget(target) {
+    if (!target) return false;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+  }
+
   function bindEvents() {
     if (elements.sidebarToggle) {
       elements.sidebarToggle.addEventListener('click', () => {
@@ -624,6 +692,12 @@
       renderKanban();
     });
 
+    if (elements.taskPriority) {
+      elements.taskPriority.addEventListener('change', event => {
+        updatePriorityIndicator(event.target.value);
+      });
+    }
+
     elements.btnNewTask.addEventListener('click', () => openTaskModal(null));
 
     document.querySelectorAll('.btn-add-card').forEach(btn => {
@@ -637,6 +711,22 @@
       event.preventDefault();
       saveTask();
     });
+
+    if (elements.btnQuickAdd) {
+      elements.btnQuickAdd.addEventListener('click', event => {
+        event.preventDefault();
+        quickAddTask();
+      });
+    }
+
+    if (elements.taskQuickTitle) {
+      elements.taskQuickTitle.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          quickAddTask();
+        }
+      });
+    }
 
     elements.taskForm.addEventListener('submit', event => {
       event.preventDefault();
@@ -662,6 +752,14 @@
     elements.projectForm.addEventListener('submit', event => {
       event.preventDefault();
       saveProject();
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key.toLowerCase() !== 'n') return;
+      if (isTypingTarget(event.target)) return;
+      if (taskModal && taskModal.modal && taskModal.modal.classList.contains('active')) return;
+      event.preventDefault();
+      openTaskModal(null);
     });
 
     bindDragAndDrop();

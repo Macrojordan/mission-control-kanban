@@ -78,12 +78,24 @@ async function initDatabase() {
           project_id INTEGER REFERENCES projects(id),
           assigned_to TEXT,
           tags TEXT,
+          due_date DATE,
+          notion_link TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           completed_at TIMESTAMP,
           estimated_hours INTEGER,
           actual_hours INTEGER
         )
+      `);
+
+      await client.query(`
+        ALTER TABLE tasks
+        ADD COLUMN IF NOT EXISTS due_date DATE
+      `);
+
+      await client.query(`
+        ALTER TABLE tasks
+        ADD COLUMN IF NOT EXISTS notion_link TEXT
       `);
 
       await client.query(`
