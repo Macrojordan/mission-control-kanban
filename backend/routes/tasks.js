@@ -129,11 +129,11 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours, randy_status, due_date, notion_link } = req.body;
+    const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours, randy_status, due_date, notion_link, notion_page_id } = req.body;
     
     const result = await runQuery(`
-      INSERT INTO tasks (title, description, status, priority, randy_status, project_id, assigned_to, tags, estimated_hours, actual_hours, due_date, notion_link, completed_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      INSERT INTO tasks (title, description, status, priority, randy_status, project_id, assigned_to, tags, estimated_hours, actual_hours, due_date, notion_link, notion_page_id, completed_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
       title,
@@ -148,6 +148,7 @@ router.post('/', async (req, res) => {
       actual_hours,
       due_date || null,
       notion_link || null,
+      notion_page_id || null,
       status === 'done' ? new Date().toISOString() : null
     ]);
 
@@ -173,7 +174,7 @@ router.put('/:id', async (req, res) => {
   }
 
   try {
-    const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours, randy_status, due_date, notion_link } = req.body;
+    const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours, randy_status, due_date, notion_link, notion_page_id } = req.body;
     
     // Buscar tarefa atual
     const currentTask = await getQuery('SELECT * FROM tasks WHERE id = $1', [req.params.id]);
@@ -221,6 +222,7 @@ router.put('/:id', async (req, res) => {
     if (actual_hours !== undefined) { updates.push(`actual_hours = $${paramIndex++}`); values.push(actual_hours); }
     if (due_date !== undefined) { updates.push(`due_date = $${paramIndex++}`); values.push(due_date); }
     if (notion_link !== undefined) { updates.push(`notion_link = $${paramIndex++}`); values.push(notion_link); }
+    if (notion_page_id !== undefined) { updates.push(`notion_page_id = $${paramIndex++}`); values.push(notion_page_id); }
 
     updates.push(`updated_at = CURRENT_TIMESTAMP`);
     values.push(req.params.id);

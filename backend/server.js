@@ -84,6 +84,8 @@ app.use('/api/projects', require('./routes/projects')); // includes fridge toggl
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/randy', require('./routes/randy'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/notion', require('./routes/notion'));
+app.use('/api/templates', require('./routes/templates'));
 
 // Main route
 app.get('/', (req, res) => {

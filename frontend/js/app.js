@@ -3,9 +3,49 @@
   const ModalManager = window.MissionControl.ModalManager;
   const Kanban = window.MissionControl.Kanban;
 
+  const DEFAULT_TEMPLATES = [
+    {
+      id: 'default-bug',
+      name: 'Bug Report',
+      data: { priority: 'high', tags: ['bug'], status: 'todo' }
+    },
+    {
+      id: 'default-feature',
+      name: 'Feature Request',
+      data: { priority: 'medium', tags: ['feature'] }
+    },
+    {
+      id: 'default-content',
+      name: 'Content Task',
+      data: { assigned_to: 'ruben', tags: ['content'] }
+    },
+    {
+      id: 'default-randy',
+      name: 'Randy Task',
+      data: { assigned_to: 'randy', status: 'todo', tags: ['ai'] }
+    },
+    {
+      id: 'default-quick',
+      name: 'Quick Win',
+      data: { priority: 'low', estimated_hours: 1 }
+    }
+  ];
+
   const state = {
     tasks: [],
     projects: [],
+    notion: {
+      results: [],
+      selected: null,
+      loading: false,
+      lastQuery: '',
+      hasAttempted: false,
+      online: null
+    },
+    templates: {
+      list: [],
+      custom: []
+    },
     filters: {
       priority: '',
       project: '',
@@ -19,6 +59,8 @@
   };
 
   let projectContextMenu = null;
+  let taskContextMenu = null;
+  let notionSearchTimer = null;
 
   const elements = {
     sidebar: document.getElementById('sidebar'),
@@ -79,7 +121,15 @@
     taskAssignee: document.getElementById('taskAssignee'),
     taskTags: document.getElementById('taskTags'),
     taskDueDate: document.getElementById('taskDueDate'),
-    taskNotionLink: document.getElementById('taskNotionLink'),
+    notionSearchInput: document.getElementById('notionSearchInput'),
+    notionSearchResults: document.getElementById('notionSearchResults'),
+    notionSelected: document.getElementById('notionSelected'),
+    notionClear: document.getElementById('notionClear'),
+    notionStatus: document.getElementById('notionStatus'),
+    notionBadge: document.getElementById('notionBadge'),
+    notionGroup: document.querySelector('.notion-group'),
+    taskNotionId: document.getElementById('taskNotionId'),
+    taskNotionUrl: document.getElementById('taskNotionUrl'),
     taskEstimated: document.getElementById('taskEstimated'),
     taskActual: document.getElementById('taskActual'),
     taskRandyStatus: document.getElementById('taskRandyStatus'),
@@ -89,6 +139,10 @@
     btnCancel: document.getElementById('btnCancel'),
     btnQuickAdd: document.getElementById('btnQuickAdd'),
     taskQuickTitle: document.getElementById('taskQuickTitle'),
+    templateSelect: document.getElementById('templateSelect'),
+    btnSaveTemplate: document.getElementById('btnSaveTemplate'),
+    btnManageTemplates: document.getElementById('btnManageTemplates'),
+    templateManagerList: document.getElementById('templateManagerList'),
     commentsSection: document.getElementById('commentsSection'),
     commentsList: document.getElementById('commentsList'),
     newComment: document.getElementById('newComment'),
@@ -102,6 +156,7 @@
 
   const taskModal = ModalManager.bindModal('taskModal', ['#modalClose', '#btnCancel']);
   const projectModal = ModalManager.bindModal('projectModal', ['#projectModalClose', '#btnCancelProject']);
+  const templatesModal = ModalManager.bindModal('templatesModal', ['#templatesModalClose', '#btnCloseTemplates']);
 
   Api.setStatusHandler((offline) => {
     state.offline = offline;
@@ -146,6 +201,239 @@
     elements.taskPriorityIndicator.className = 'priority-indicator';
     if (value) {
       elements.taskPriorityIndicator.classList.add(value);
+    }
+  }
+
+  function buildNotionUrl(pageId) {
+    if (!pageId) return '';
+    return `https://www.notion.so/${pageId.replace(/-/g, '')}`;
+  }
+
+  function getNotionIconMarkup(item) {
+    if (!item || !item.icon) return '📄';
+    if (item.icon_type === 'emoji') return item.icon;
+    if (item.icon_type === 'external' || item.icon_type === 'file') {
+      return `<img src="${item.icon}" alt="" class="notion-icon-image">`;
+    }
+    return '📄';
+  }
+
+  function renderNotionSelection() {
+    if (!elements.notionSelected) return;
+    const selection = state.notion.selected;
+    if (!selection) {
+      elements.notionSelected.innerHTML = '';
+      if (elements.taskNotionId) elements.taskNotionId.value = '';
+      if (elements.taskNotionUrl) elements.taskNotionUrl.value = '';
+      if (elements.notionSearchInput) elements.notionSearchInput.value = '';
+      return;
+    }
+
+    const iconMarkup = getNotionIconMarkup(selection);
+    const title = selection.title || 'Notion page';
+    elements.notionSelected.innerHTML = `
+      <div class="notion-selected-card">
+        <span class="notion-icon">${iconMarkup}</span>
+        <span class="notion-title">${title}</span>
+      </div>
+    `;
+
+    if (elements.taskNotionId) elements.taskNotionId.value = selection.id || '';
+    if (elements.taskNotionUrl) elements.taskNotionUrl.value = selection.url || '';
+    if (elements.notionSearchInput) elements.notionSearchInput.value = selection.title || '';
+  }
+
+  function clearNotionSelection() {
+    state.notion.selected = null;
+    if (elements.notionSearchInput) elements.notionSearchInput.value = '';
+    renderNotionSelection();
+    renderNotionResults([]);
+  }
+
+  function renderNotionResults(results) {
+    if (!elements.notionSearchResults) return;
+    elements.notionSearchResults.innerHTML = '';
+    if (!results || !results.length) {
+      return;
+    }
+
+    results.forEach(item => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'notion-result';
+      option.innerHTML = `
+        <span class="notion-icon">${getNotionIconMarkup(item)}</span>
+        <span class="notion-title">${item.title}</span>
+        <span class="notion-type">${item.type}</span>
+      `;
+      option.addEventListener('click', () => {
+        state.notion.selected = item;
+        renderNotionSelection();
+        renderNotionResults([]);
+        if (elements.taskTitle) {
+          elements.taskTitle.value = item.title;
+        }
+      });
+      elements.notionSearchResults.appendChild(option);
+    });
+  }
+
+  function setNotionStatus(message) {
+    if (!elements.notionStatus) return;
+    elements.notionStatus.textContent = message || '';
+  }
+
+  function updateNotionBadge() {
+    if (!elements.notionBadge) return;
+    if (!state.notion.hasAttempted) {
+      elements.notionBadge.hidden = true;
+      elements.notionBadge.classList.remove('online', 'offline');
+      if (elements.notionGroup) {
+        elements.notionGroup.classList.remove('offline');
+      }
+      return;
+    }
+    const online = state.notion.online !== false;
+    elements.notionBadge.hidden = false;
+    elements.notionBadge.textContent = online ? 'Notion Online' : 'Notion Offline';
+    elements.notionBadge.classList.toggle('online', online);
+    elements.notionBadge.classList.toggle('offline', !online);
+    if (elements.notionGroup) {
+      elements.notionGroup.classList.toggle('offline', !online);
+    }
+  }
+
+  function setNotionConnectivity(online) {
+    state.notion.hasAttempted = true;
+    state.notion.online = online;
+    updateNotionBadge();
+  }
+
+  async function searchNotion(query) {
+    if (!query) {
+      renderNotionResults([]);
+      return;
+    }
+    state.notion.loading = true;
+    setNotionStatus('Buscando no Notion...');
+    const results = await Api.searchNotion(query);
+    state.notion.loading = false;
+    state.notion.results = results || [];
+    setNotionConnectivity(!state.offline);
+    if (state.offline) {
+      setNotionStatus('Sem conexão com Notion.');
+    } else {
+      setNotionStatus(results && results.length ? '' : 'Nenhum resultado encontrado.');
+    }
+    renderNotionResults(state.notion.results);
+  }
+
+  function closeNotionResults() {
+    renderNotionResults([]);
+    setNotionStatus('');
+  }
+
+  function getTemplatePayloadFromForm() {
+    return {
+      status: elements.taskStatus ? elements.taskStatus.value : 'backlog',
+      priority: elements.taskPriority ? elements.taskPriority.value : 'medium',
+      assigned_to: elements.taskAssignee ? elements.taskAssignee.value : '',
+      tags: elements.taskTags && elements.taskTags.value
+        ? elements.taskTags.value.split(',').map(tag => tag.trim()).filter(Boolean)
+        : [],
+      estimated_hours: elements.taskEstimated && elements.taskEstimated.value
+        ? parseFloat(elements.taskEstimated.value)
+        : null
+    };
+  }
+
+  function applyTemplateData(data) {
+    if (!data) return;
+    if (data.status && elements.taskStatus) elements.taskStatus.value = data.status;
+    if (data.priority && elements.taskPriority) elements.taskPriority.value = data.priority;
+    if (data.assigned_to !== undefined && elements.taskAssignee) elements.taskAssignee.value = data.assigned_to;
+    if (data.tags && elements.taskTags) elements.taskTags.value = data.tags.join(', ');
+    if (data.estimated_hours !== undefined && elements.taskEstimated) {
+      elements.taskEstimated.value = data.estimated_hours === null ? '' : data.estimated_hours;
+    }
+    updatePriorityIndicator(elements.taskPriority.value);
+  }
+
+  function renderTemplateOptions() {
+    if (!elements.templateSelect) return;
+    const options = ['<option value="">Selecionar template...</option>'];
+    DEFAULT_TEMPLATES.forEach(template => {
+      options.push(`<option value="${template.id}">${template.name}</option>`);
+    });
+    state.templates.custom.forEach(template => {
+      options.push(`<option value="custom:${template.id}">Custom: ${template.name}</option>`);
+    });
+    elements.templateSelect.innerHTML = options.join('');
+  }
+
+  async function refreshTemplates() {
+    const templates = await Api.getTemplates();
+    state.templates.custom = (templates || []).map(template => ({
+      id: template.id,
+      name: template.name,
+      updated_at: template.updated_at,
+      data: typeof template.data === 'string' ? (() => {
+        try {
+          return JSON.parse(template.data);
+        } catch {
+          return {};
+        }
+      })() : template.data
+    }));
+    renderTemplateOptions();
+  }
+
+  async function saveTemplateFromForm() {
+    const name = prompt('Nome do template?');
+    if (!name) return;
+    const data = getTemplatePayloadFromForm();
+    const template = await Api.createTemplate({ name, data });
+    await refreshTemplates();
+    if (elements.templateSelect && template && template.id) {
+      elements.templateSelect.value = `custom:${template.id}`;
+    }
+    if (templatesModal && templatesModal.modal && templatesModal.modal.classList.contains('active')) {
+      renderTemplateManagerList();
+    }
+    showNotification('Template salvo', 'success');
+  }
+
+  function renderTemplateManagerList() {
+    if (!elements.templateManagerList) return;
+    if (!state.templates.custom.length) {
+      elements.templateManagerList.innerHTML = '<div class="template-manager-empty">Nenhum template salvo ainda.</div>';
+      return;
+    }
+
+    const rows = state.templates.custom.map(template => {
+      const updatedAt = template.updated_at ? formatDate(template.updated_at) : '';
+      return `
+        <div class="template-manager-item" data-template-id="${template.id}">
+          <div class="template-manager-info">
+            <div class="template-manager-name">${template.name}</div>
+            <div class="template-manager-meta">${updatedAt ? `Atualizado em ${updatedAt}` : 'Sem data de atualização'}</div>
+          </div>
+          <div class="template-manager-actions">
+            <button type="button" class="btn-secondary template-rename">Renomear</button>
+            <button type="button" class="btn-danger template-delete">Excluir</button>
+          </div>
+        </div>
+      `;
+    });
+
+    elements.templateManagerList.innerHTML = rows.join('');
+  }
+
+  async function openTemplateManager() {
+    await refreshTemplates();
+    renderTemplateManagerList();
+    if (templatesModal) {
+      templatesModal.open();
     }
   }
 
@@ -212,6 +500,28 @@
           onDragStart: handleDragStart,
           onDragEnd: handleDragEnd
         });
+        const notionButton = card.querySelector('.task-notion');
+        if (notionButton) {
+          notionButton.addEventListener('click', event => {
+            event.stopPropagation();
+            const url = notionButton.dataset.notionUrl || buildNotionUrl(notionButton.dataset.notionId);
+            if (url) {
+              window.open(url, '_blank', 'noopener');
+            }
+          });
+        }
+        card.addEventListener('contextmenu', event => {
+          event.preventDefault();
+          openTaskContextMenu(task, { x: event.clientX, y: event.clientY });
+        });
+        const menuButton = card.querySelector('.task-menu');
+        if (menuButton) {
+          menuButton.addEventListener('click', event => {
+            event.stopPropagation();
+            const rect = menuButton.getBoundingClientRect();
+            openTaskContextMenu(task, { x: rect.left, y: rect.bottom + 6 });
+          });
+        }
         content.appendChild(card);
       });
 
@@ -243,6 +553,64 @@
   function hideProjectContextMenu() {
     if (!projectContextMenu) return;
     projectContextMenu.style.display = 'none';
+  }
+
+  function ensureTaskContextMenu() {
+    if (taskContextMenu) return;
+    taskContextMenu = document.createElement('div');
+    taskContextMenu.className = 'task-context-menu';
+    document.body.appendChild(taskContextMenu);
+
+    document.addEventListener('click', (event) => {
+      if (!taskContextMenu) return;
+      if (taskContextMenu.contains(event.target)) return;
+      if (event.target.closest('.task-menu')) return;
+      hideTaskContextMenu();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') hideTaskContextMenu();
+    });
+
+    window.addEventListener('resize', hideTaskContextMenu);
+    window.addEventListener('scroll', hideTaskContextMenu, true);
+  }
+
+  function hideTaskContextMenu() {
+    if (!taskContextMenu) return;
+    taskContextMenu.style.display = 'none';
+  }
+
+  function duplicateTask(task) {
+    if (!task) return;
+    const copy = {
+      ...task,
+      id: null,
+      title: `${task.title} (Copy)`
+    };
+    openTaskModal(copy);
+  }
+
+  function openTaskContextMenu(task, coords) {
+    ensureTaskContextMenu();
+    taskContextMenu.innerHTML = '';
+
+    const duplicateAction = document.createElement('button');
+    duplicateAction.type = 'button';
+    duplicateAction.textContent = 'Duplicar';
+    duplicateAction.addEventListener('click', () => {
+      duplicateTask(task);
+      hideTaskContextMenu();
+    });
+
+    taskContextMenu.appendChild(duplicateAction);
+    taskContextMenu.style.display = 'block';
+
+    const menuRect = taskContextMenu.getBoundingClientRect();
+    const left = Math.min(coords.x, window.innerWidth - menuRect.width - 8);
+    const top = Math.min(coords.y, window.innerHeight - menuRect.height - 8);
+    taskContextMenu.style.left = `${Math.max(8, left)}px`;
+    taskContextMenu.style.top = `${Math.max(8, top)}px`;
   }
 
   function openProjectContextMenu(project, coords) {
@@ -445,34 +813,61 @@
     return sorted[0].title;
   }
 
+  function setNotionSelectionFromTask(task) {
+    if (!task || !task.notion_page_id) {
+      clearNotionSelection();
+      return;
+    }
+    const url = task.notion_link || buildNotionUrl(task.notion_page_id);
+    state.notion.selected = {
+      id: task.notion_page_id,
+      title: task.title || 'Notion page',
+      url,
+      icon_type: 'emoji',
+      icon: '📄',
+      type: 'page'
+    };
+    renderNotionSelection();
+  }
+
   function openTaskModal(task) {
     const isEdit = !!task && task.id;
+    const draft = task || {};
     elements.modalTitle.textContent = isEdit ? 'Editar Tarefa' : 'Nova Tarefa';
     elements.btnDelete.style.display = isEdit ? 'inline-flex' : 'none';
     elements.commentsSection.style.display = isEdit ? 'block' : 'none';
 
     elements.taskId.value = isEdit ? task.id : '';
-    elements.taskTitle.value = isEdit ? task.title : '';
-    elements.taskDescription.value = isEdit ? task.description || '' : '';
-    elements.taskStatus.value = isEdit ? task.status : (task && task.status) || 'backlog';
-    elements.taskPriority.value = isEdit ? task.priority || 'medium' : 'medium';
-    elements.taskProject.value = isEdit ? task.project_id || 1 : 1;
-    elements.taskAssignee.value = isEdit ? task.assigned_to || '' : '';
-    elements.taskTags.value = isEdit ? (task.tags || []).join(', ') : '';
+    elements.taskTitle.value = isEdit ? task.title : (draft.title || '');
+    elements.taskDescription.value = isEdit ? task.description || '' : (draft.description || '');
+    elements.taskStatus.value = isEdit ? task.status : draft.status || 'backlog';
+    elements.taskPriority.value = isEdit ? task.priority || 'medium' : draft.priority || 'medium';
+    elements.taskProject.value = isEdit ? task.project_id || 1 : draft.project_id || 1;
+    elements.taskAssignee.value = isEdit ? task.assigned_to || '' : draft.assigned_to || '';
+    const draftTags = Array.isArray(draft.tags) ? draft.tags : (draft.tags ? String(draft.tags).split(',') : []);
+    elements.taskTags.value = isEdit ? (task.tags || []).join(', ') : draftTags.map(tag => tag.trim()).filter(Boolean).join(', ');
     if (elements.taskDueDate) {
-      elements.taskDueDate.value = isEdit ? toDateInputValue(task.due_date) : '';
+      elements.taskDueDate.value = isEdit ? toDateInputValue(task.due_date) : toDateInputValue(draft.due_date);
     }
-    if (elements.taskNotionLink) {
-      elements.taskNotionLink.value = isEdit ? task.notion_link || '' : '';
-    }
-    elements.taskEstimated.value = isEdit && task.estimated_hours ? task.estimated_hours : '';
-    elements.taskActual.value = isEdit && task.actual_hours ? task.actual_hours : '';
+    setNotionSelectionFromTask(draft && draft.notion_page_id ? draft : null);
+    const estimatedValue = isEdit ? task.estimated_hours : draft.estimated_hours;
+    const actualValue = isEdit ? task.actual_hours : draft.actual_hours;
+    elements.taskEstimated.value = (estimatedValue === 0 || estimatedValue) ? estimatedValue : '';
+    elements.taskActual.value = (actualValue === 0 || actualValue) ? actualValue : '';
     if (elements.taskRandyStatus) {
-      elements.taskRandyStatus.value = isEdit ? (task.randy_status || 'pending') : 'pending';
+      elements.taskRandyStatus.value = isEdit ? (task.randy_status || 'pending') : draft.randy_status || 'pending';
     }
     if (elements.taskQuickTitle) {
       elements.taskQuickTitle.value = '';
     }
+    if (elements.templateSelect) {
+      elements.templateSelect.value = '';
+    }
+
+    state.notion.hasAttempted = false;
+    state.notion.online = null;
+    updateNotionBadge();
+    setNotionStatus('');
 
     updatePriorityIndicator(elements.taskPriority.value);
 
@@ -507,6 +902,11 @@
   }
 
   async function saveTask() {
+    const notionPageId = elements.taskNotionId && elements.taskNotionId.value.trim() ? elements.taskNotionId.value.trim() : null;
+    const notionUrl = elements.taskNotionUrl && elements.taskNotionUrl.value.trim()
+      ? elements.taskNotionUrl.value.trim()
+      : (notionPageId ? buildNotionUrl(notionPageId) : null);
+
     const payload = {
       title: elements.taskTitle.value.trim(),
       description: elements.taskDescription.value.trim(),
@@ -516,7 +916,8 @@
       assigned_to: elements.taskAssignee.value,
       tags: elements.taskTags.value ? elements.taskTags.value.split(',').map(tag => tag.trim()).filter(Boolean) : [],
       due_date: elements.taskDueDate ? (elements.taskDueDate.value || null) : null,
-      notion_link: elements.taskNotionLink && elements.taskNotionLink.value.trim() ? elements.taskNotionLink.value.trim() : null,
+      notion_link: notionUrl,
+      notion_page_id: notionPageId,
       estimated_hours: elements.taskEstimated.value ? parseFloat(elements.taskEstimated.value) : null,
       actual_hours: elements.taskActual.value ? parseFloat(elements.taskActual.value) : null,
       randy_status: elements.taskRandyStatus ? elements.taskRandyStatus.value : 'pending'
@@ -705,6 +1106,105 @@
       });
     }
 
+    if (elements.templateSelect) {
+      elements.templateSelect.addEventListener('change', event => {
+        const value = event.target.value;
+        if (!value) return;
+        const defaultTemplate = DEFAULT_TEMPLATES.find(t => t.id === value);
+        if (defaultTemplate) {
+          applyTemplateData(defaultTemplate.data);
+          return;
+        }
+        if (value.startsWith('custom:')) {
+          const id = value.split(':')[1];
+          const custom = state.templates.custom.find(t => String(t.id) === String(id));
+          if (custom) {
+            applyTemplateData(custom.data);
+          }
+        }
+      });
+    }
+
+    if (elements.btnSaveTemplate) {
+      elements.btnSaveTemplate.addEventListener('click', () => {
+        saveTemplateFromForm();
+      });
+    }
+
+    if (elements.btnManageTemplates) {
+      elements.btnManageTemplates.addEventListener('click', () => {
+        openTemplateManager();
+      });
+    }
+
+    if (elements.templateManagerList) {
+      elements.templateManagerList.addEventListener('click', async event => {
+        const actionButton = event.target.closest('button');
+        if (!actionButton) return;
+        const row = event.target.closest('.template-manager-item');
+        if (!row) return;
+        const templateId = row.dataset.templateId;
+        const template = state.templates.custom.find(item => String(item.id) === String(templateId));
+        if (!template) return;
+
+        if (actionButton.classList.contains('template-rename')) {
+          const name = prompt('Novo nome do template?', template.name);
+          if (!name) return;
+          await Api.updateTemplate(templateId, { name });
+          await refreshTemplates();
+          renderTemplateManagerList();
+          showNotification('Template atualizado', 'success');
+          return;
+        }
+
+        if (actionButton.classList.contains('template-delete')) {
+          const confirmed = confirm(`Excluir o template "${template.name}"?`);
+          if (!confirmed) return;
+          await Api.deleteTemplate(templateId);
+          await refreshTemplates();
+          renderTemplateManagerList();
+          if (elements.templateSelect && elements.templateSelect.value === `custom:${templateId}`) {
+            elements.templateSelect.value = '';
+          }
+          showNotification('Template excluído', 'success');
+        }
+      });
+    }
+
+    if (elements.notionSearchInput) {
+      elements.notionSearchInput.addEventListener('input', event => {
+        const value = event.target.value.trim();
+        if (notionSearchTimer) {
+          clearTimeout(notionSearchTimer);
+        }
+        if (!value) {
+          closeNotionResults();
+          return;
+        }
+        notionSearchTimer = setTimeout(() => {
+          searchNotion(value);
+        }, 300);
+      });
+
+      elements.notionSearchInput.addEventListener('focus', async () => {
+        if (state.notion.selected || elements.notionSearchInput.value.trim()) return;
+        setNotionStatus('Carregando páginas recentes...');
+        const results = await Api.listNotionPages();
+        state.notion.results = results || [];
+        setNotionConnectivity(!state.offline);
+        if (state.offline) {
+          setNotionStatus('Sem conexão com Notion.');
+        } else {
+          setNotionStatus(results && results.length ? '' : 'Nenhuma página encontrada.');
+        }
+        renderNotionResults(state.notion.results);
+      });
+    }
+
+    if (elements.notionClear) {
+      elements.notionClear.addEventListener('click', () => clearNotionSelection());
+    }
+
     elements.btnNewTask.addEventListener('click', () => openTaskModal(null));
 
     document.querySelectorAll('.btn-add-card').forEach(btn => {
@@ -769,6 +1269,12 @@
       openTaskModal(null);
     });
 
+    document.addEventListener('click', event => {
+      if (!elements.notionSearchResults) return;
+      if (event.target.closest('.notion-group')) return;
+      closeNotionResults();
+    });
+
     window.addEventListener('resize', () => {
       if (window.innerWidth > 1024) {
         elements.sidebar.classList.remove('open');
@@ -828,6 +1334,7 @@
     setupPullToRefresh();
     setupOfflineDetection();
     setView('kanban');
+    refreshTemplates();
     refreshData();
     refreshHeartbeat();
     setInterval(refreshData, 15000);

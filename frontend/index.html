@@ -293,6 +293,15 @@
           </div>
         </div>
 
+        <div class="template-row">
+          <label for="templateSelect">Templates</label>
+          <div class="template-controls">
+            <select id="templateSelect"></select>
+            <button type="button" class="btn-secondary" id="btnSaveTemplate">Salvar template</button>
+            <button type="button" class="btn-secondary" id="btnManageTemplates">Gerenciar templates</button>
+          </div>
+        </div>
+
         <form id="taskForm">
           <input type="hidden" id="taskId">
           
@@ -361,9 +370,20 @@
               <input type="date" id="taskDueDate">
             </div>
 
-            <div class="form-group">
-              <label for="taskNotionLink">Notion Link</label>
-              <input type="url" id="taskNotionLink" placeholder="https://www.notion.so/...">
+            <div class="form-group notion-group">
+              <div class="notion-label-row">
+                <label for="notionSearchInput">Notion</label>
+                <span class="notion-badge" id="notionBadge" hidden>Notion Online</span>
+              </div>
+              <div class="notion-search">
+                <input type="text" id="notionSearchInput" placeholder="Buscar páginas no Notion...">
+                <button type="button" class="btn-secondary notion-clear" id="notionClear">Limpar</button>
+              </div>
+              <div class="notion-selected" id="notionSelected"></div>
+              <div class="notion-results" id="notionSearchResults"></div>
+              <div class="notion-status" id="notionStatus"></div>
+              <input type="hidden" id="taskNotionId">
+              <input type="hidden" id="taskNotionUrl">
             </div>
           </div>
 
@@ -435,6 +455,23 @@
       <div class="modal-footer">
         <button type="button" class="btn-secondary" id="btnCancelProject">Cancelar</button>
         <button type="submit" class="btn-primary" id="btnSaveProject">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Templates -->
+  <div class="modal" id="templatesModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h2>Templates Salvos</h2>
+        <button class="modal-close" id="templatesModalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="template-manager-list" id="templateManagerList"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnCloseTemplates">Fechar</button>
       </div>
     </div>
   </div>

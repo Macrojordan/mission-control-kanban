@@ -80,11 +80,22 @@ async function initDatabase() {
           tags TEXT,
           due_date DATE,
           notion_link TEXT,
+          notion_page_id TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           completed_at TIMESTAMP,
           estimated_hours INTEGER,
           actual_hours INTEGER
+        )
+      `);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS templates (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          data JSONB NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
 
@@ -96,6 +107,11 @@ async function initDatabase() {
       await client.query(`
         ALTER TABLE tasks
         ADD COLUMN IF NOT EXISTS notion_link TEXT
+      `);
+
+      await client.query(`
+        ALTER TABLE tasks
+        ADD COLUMN IF NOT EXISTS notion_page_id TEXT
       `);
 
       await client.query(`

@@ -6,6 +6,7 @@
     projects: 'mc_projects',
     comments: 'mc_comments',
     activity: 'mc_activity',
+    templates: 'mc_templates',
     meta: 'mc_meta'
   };
 
@@ -46,7 +47,8 @@
   function getMeta() {
     return readJson(STORAGE_KEYS.meta, {
       lastTaskId: 0,
-      lastProjectId: 0
+      lastProjectId: 0,
+      lastTemplateId: 0
     });
   }
 
@@ -78,6 +80,12 @@
     },
     setActivity(activity) {
       writeJson(STORAGE_KEYS.activity, activity);
+    },
+    getTemplates() {
+      return readJson(STORAGE_KEYS.templates, []);
+    },
+    setTemplates(templates) {
+      writeJson(STORAGE_KEYS.templates, templates);
     },
     ensureDefaultProject() {
       const projects = this.getProjects();
@@ -111,6 +119,12 @@
       meta.lastProjectId += 1;
       setMeta(meta);
       return meta.lastProjectId;
+    },
+    nextTemplateId() {
+      const meta = getMeta();
+      meta.lastTemplateId += 1;
+      setMeta(meta);
+      return meta.lastTemplateId;
     }
   };
 
@@ -356,6 +370,7 @@
             tags: payload.tags || [],
             due_date: payload.due_date || null,
             notion_link: payload.notion_link || null,
+            notion_page_id: payload.notion_page_id || null,
             created_at: now,
             updated_at: now,
             completed_at: payload.status === 'done' ? now : null,
@@ -542,6 +557,56 @@
         }
       );
     },
+    async getTemplates() {
+      return safeCall(
+        async () => request(`${API_BASE}/templates`),
+        () => storage.getTemplates()
+      );
+    },
+    async createTemplate(payload) {
+      return safeCall(
+        async () => request(`${API_BASE}/templates`, { method: 'POST', body: JSON.stringify(payload) }),
+        () => {
+          const templates = storage.getTemplates();
+          const now = getNowIso();
+          const template = {
+            id: storage.nextTemplateId(),
+            name: payload.name,
+            data: payload.data,
+            created_at: now,
+            updated_at: now
+          };
+          templates.unshift(template);
+          storage.setTemplates(templates);
+          return template;
+        }
+      );
+    },
+    async updateTemplate(id, payload) {
+      return safeCall(
+        async () => request(`${API_BASE}/templates/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+        () => {
+          const templates = storage.getTemplates();
+          const idx = templates.findIndex(t => String(t.id) === String(id));
+          if (idx === -1) return null;
+          templates[idx] = { ...templates[idx], ...payload, updated_at: getNowIso() };
+          storage.setTemplates(templates);
+          return templates[idx];
+        }
+      );
+    },
+    async deleteTemplate(id) {
+      return safeCall(
+        async () => request(`${API_BASE}/templates/${id}`, { method: 'DELETE' }),
+        () => {
+          const templates = storage.getTemplates();
+          const idx = templates.findIndex(t => String(t.id) === String(id));
+          if (idx >= 0) templates.splice(idx, 1);
+          storage.setTemplates(templates);
+          return { message: 'Template deletado' };
+        }
+      );
+    },
     async getDashboardMetrics() {
       return safeCall(
         async () => request(`${API_BASE}/dashboard/metrics`),
@@ -560,6 +625,20 @@
       return safeCall(
         async () => request(`${API_BASE}/randy/stats`),
         () => randyStatsLocal()
+      );
+    },
+    async searchNotion(query) {
+      const queryString = new URLSearchParams({ q: query || '' }).toString();
+      const url = `${API_BASE}/notion/search${queryString ? `?${queryString}` : ''}`;
+      return safeCall(
+        async () => request(url),
+        () => []
+      );
+    },
+    async listNotionPages() {
+      return safeCall(
+        async () => request(`${API_BASE}/notion/pages`),
+        () => []
       );
     }
   };
