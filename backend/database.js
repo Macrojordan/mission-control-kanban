@@ -1,162 +1,169 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
 
-const DB_PATH = path.join(__dirname, '../data/mission_control.db');
+// Use Render's DATABASE_URL or fallback to local PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/mission_control',
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  max: 20, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
-let db = null;
+// Handle pool errors
+pool.on('error', (err) => {
+  console.error('Unexpected database error:', err);
+});
 
-function getDatabase() {
-  if (!db) {
-    db = new sqlite3.Database(DB_PATH, (err) => {
-      if (err) {
-        console.error('Erro ao conectar ao banco:', err);
-      } else {
-        console.log('✅ Conectado ao SQLite');
-      }
-    });
-  }
-  return db;
-}
+async function initDatabase() {
+  try {
+    const client = await pool.connect();
+    try {
+      // Create tables
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS projects (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          color TEXT DEFAULT '#6366f1',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
-function initDatabase() {
-  const database = getDatabase();
-  
-  database.serialize(() => {
-    // Tabela de projetos
-    database.run(`
-      CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT,
-        color TEXT DEFAULT '#6366f1',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tasks (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT,
+          status TEXT DEFAULT 'backlog',
+          priority TEXT DEFAULT 'medium',
+          randy_status TEXT DEFAULT 'pending',
+          project_id INTEGER REFERENCES projects(id),
+          assigned_to TEXT,
+          tags TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          completed_at TIMESTAMP,
+          estimated_hours INTEGER,
+          actual_hours INTEGER
+        )
+      `);
 
-    // Tabela de tarefas
-    database.run(`
-      CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT,
-        status TEXT DEFAULT 'backlog',
-        priority TEXT DEFAULT 'medium',
-        randy_status TEXT DEFAULT 'pending',
-        project_id INTEGER,
-        assigned_to TEXT,
-        tags TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        completed_at DATETIME,
-        estimated_hours INTEGER,
-        actual_hours INTEGER,
-        FOREIGN KEY (project_id) REFERENCES projects(id)
-      )
-    `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS comments (
+          id SERIAL PRIMARY KEY,
+          task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+          author TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
-    // Tabela de comentários
-    database.run(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task_id INTEGER NOT NULL,
-        author TEXT NOT NULL,
-        content TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
-      )
-    `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS attachments (
+          id SERIAL PRIMARY KEY,
+          task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+          filename TEXT NOT NULL,
+          original_name TEXT NOT NULL,
+          mime_type TEXT,
+          size INTEGER,
+          uploaded_by TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
-    // Tabela de anexos
-    database.run(`
-      CREATE TABLE IF NOT EXISTS attachments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task_id INTEGER NOT NULL,
-        filename TEXT NOT NULL,
-        original_name TEXT NOT NULL,
-        mime_type TEXT,
-        size INTEGER,
-        uploaded_by TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
-      )
-    `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS activity_log (
+          id SERIAL PRIMARY KEY,
+          task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+          action TEXT NOT NULL,
+          description TEXT,
+          performed_by TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
-    // Tabela de histórico de atividades
-    database.run(`
-      CREATE TABLE IF NOT EXISTS activity_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task_id INTEGER,
-        action TEXT NOT NULL,
-        description TEXT,
-        performed_by TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
-      )
-    `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS randy_notifications (
+          id SERIAL PRIMARY KEY,
+          task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+          type TEXT NOT NULL,
+          message TEXT NOT NULL,
+          read BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
-    // Tabela de notificações para Randy
-    database.run(`
-      CREATE TABLE IF NOT EXISTS randy_notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task_id INTEGER,
-        type TEXT NOT NULL,
-        message TEXT NOT NULL,
-        read BOOLEAN DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
-      )
-    `);
+      // Insert default project
+      await client.query(`
+        INSERT INTO projects (id, name, description, color)
+        VALUES (1, 'Geral', 'Projeto padrão para tarefas diversas', '#6366f1')
+        ON CONFLICT (id) DO NOTHING
+      `);
 
-    // Inserir projeto padrão
-    database.run(`
-      INSERT OR IGNORE INTO projects (id, name, description, color)
-      VALUES (1, 'Geral', 'Projeto padrão para tarefas diversas', '#6366f1')
-    `);
+      // Create sequence for id 1 if it doesn't exist
+      await client.query(`
+        SELECT setval('projects_id_seq', COALESCE((SELECT MAX(id) FROM projects), 1), true)
+      `);
 
-    console.log('✅ Banco de dados inicializado');
-  });
-
-  // Migração simples para adicionar colunas novas
-  database.all(`PRAGMA table_info(tasks)`, (err, columns) => {
-    if (err || !columns) return;
-    const columnNames = columns.map(col => col.name);
-    if (!columnNames.includes('randy_status')) {
-      database.run(`ALTER TABLE tasks ADD COLUMN randy_status TEXT DEFAULT 'pending'`);
+      console.log('✅ PostgreSQL database initialized');
+    } finally {
+      client.release();
     }
-  });
+  } catch (err) {
+    console.error('❌ Database initialization error:', err);
+    throw err;
+  }
 }
 
-function runQuery(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    getDatabase().run(sql, params, function(err) {
-      if (err) reject(err);
-      else resolve({ id: this.lastID, changes: this.changes });
-    });
-  });
+async function runQuery(sql, params = []) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(sql, params);
+    return { 
+      id: result.rows[0]?.id || result.rows[0]?.lastID,
+      changes: result.rowCount,
+      rows: result.rows
+    };
+  } finally {
+    client.release();
+  }
 }
 
-function getQuery(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    getDatabase().get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
+async function getQuery(sql, params = []) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(sql, params);
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
 }
 
-function allQuery(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    getDatabase().all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
+async function allQuery(sql, params = []) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(sql, params);
+    return result.rows;
+  } finally {
+    client.release();
+  }
 }
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, closing database pool...');
+  await pool.end();
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, closing database pool...');
+  await pool.end();
+});
 
 module.exports = {
+  pool,
   initDatabase,
-  getDatabase,
   runQuery,
   getQuery,
   allQuery

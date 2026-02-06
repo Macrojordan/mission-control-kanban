@@ -2,16 +2,21 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
-const { initDatabase } = require('./database');
+const { initDatabase, pool } = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const APP_PASSWORD = process.env.APP_PASSWORD || 'agentboss2026';
 
+// Trust proxy (needed for Render)
+app.set('trust proxy', 1);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -45,8 +50,10 @@ function checkPassword(req, res, next) {
 // Apply password protection BEFORE static files
 app.use(checkPassword);
 
-// Static files (now protected)
+// CORS
 app.use(cors());
+
+// Static files (now protected)
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use('/assets', express.static(path.join(__dirname, '../frontend/assets')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -65,31 +72,81 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// Inicializar banco de dados
-initDatabase();
-
-// Rotas
+// Routes
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/randy', require('./routes/randy'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
-// Rota principal
+// Main route
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// Health check (needs auth now)
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check - now with DB connectivity test
+app.get('/health', async (req, res) => {
+  try {
+    // Test database connectivity
+    await pool.query('SELECT 1');
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (err) {
+    res.status(503).json({ 
+      status: 'error', 
+      timestamp: new Date().toISOString(),
+      database: 'disconnected',
+      error: err.message
+    });
+  }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Mission Control rodando em http://0.0.0.0:${PORT}`);
-  console.log(`📊 Dashboard: http://localhost:${PORT}`);
-  console.log(`🤖 API Randy: http://localhost:${PORT}/api/randy`);
-  console.log(`🔒 Password protected`);
+// API health check
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (err) {
+    res.status(503).json({ 
+      status: 'error', 
+      error: err.message 
+    });
+  }
 });
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ 
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message 
+  });
+});
+
+// Initialize database and start server
+async function startServer() {
+  try {
+    await initDatabase();
+    console.log('✅ Database initialized');
+    
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Mission Control running at http://0.0.0.0:${PORT}`);
+      console.log(`📊 Dashboard: http://localhost:${PORT}`);
+      console.log(`🤖 API Randy: http://localhost:${PORT}/api/randy`);
+      console.log(`🔒 Password protected`);
+    });
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 module.exports = app;

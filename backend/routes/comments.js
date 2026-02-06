@@ -6,10 +6,11 @@ const { allQuery, runQuery } = require('../database');
 router.get('/task/:taskId', async (req, res) => {
   try {
     const comments = await allQuery(`
-      SELECT * FROM comments WHERE task_id = ? ORDER BY created_at ASC
+      SELECT * FROM comments WHERE task_id = $1 ORDER BY created_at ASC
     `, [req.params.taskId]);
     res.json(comments);
   } catch (error) {
+    console.error('Error fetching comments:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -21,12 +22,13 @@ router.post('/', async (req, res) => {
     
     const result = await runQuery(`
       INSERT INTO comments (task_id, author, content)
-      VALUES (?, ?, ?)
+      VALUES ($1, $2, $3)
+      RETURNING *
     `, [task_id, author, content]);
 
-    const comment = await allQuery('SELECT * FROM comments WHERE id = ?', [result.id]);
-    res.status(201).json(comment[0]);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
+    console.error('Error creating comment:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -34,9 +36,15 @@ router.post('/', async (req, res) => {
 // Deletar comentário
 router.delete('/:id', async (req, res) => {
   try {
-    await runQuery('DELETE FROM comments WHERE id = ?', [req.params.id]);
+    const result = await runQuery('DELETE FROM comments WHERE id = $1 RETURNING *', [req.params.id]);
+    
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'Comentário não encontrado' });
+    }
+    
     res.json({ message: 'Comentário deletado' });
   } catch (error) {
+    console.error('Error deleting comment:', error);
     res.status(500).json({ error: error.message });
   }
 });

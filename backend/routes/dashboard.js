@@ -28,29 +28,29 @@ router.get('/metrics', async (req, res) => {
       SELECT p.name, p.color, COUNT(t.id) as count
       FROM projects p
       LEFT JOIN tasks t ON p.id = t.project_id
-      GROUP BY p.id
+      GROUP BY p.id, p.name, p.color
     `);
 
-    // Tempo médio de conclusão
+    // Tempo médio de conclusão - PostgreSQL syntax
     const avgTime = await getQuery(`
       SELECT AVG(
-        (julianday(completed_at) - julianday(created_at)) * 24
+        EXTRACT(EPOCH FROM (completed_at - created_at)) / 3600
       ) as avg_hours 
       FROM tasks 
       WHERE status = 'done' AND completed_at IS NOT NULL
     `);
 
-    // Tarefas concluídas hoje
+    // Tarefas concluídas hoje - PostgreSQL syntax
     const completedToday = await getQuery(`
       SELECT COUNT(*) as count FROM tasks 
       WHERE status = 'done' 
-      AND date(completed_at) = date('now')
+      AND DATE(completed_at) = CURRENT_DATE
     `);
 
-    // Tarefas criadas esta semana
+    // Tarefas criadas esta semana - PostgreSQL syntax
     const createdThisWeek = await getQuery(`
       SELECT COUNT(*) as count FROM tasks 
-      WHERE date(created_at) >= date('now', '-7 days')
+      WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
     `);
 
     // Atividades recentes
@@ -64,9 +64,9 @@ router.get('/metrics', async (req, res) => {
 
     res.json({
       totals: {
-        all: totalTasks.count,
-        completed_today: completedToday.count,
-        created_this_week: createdThisWeek.count
+        all: parseInt(totalTasks.count),
+        completed_today: parseInt(completedToday.count),
+        created_this_week: parseInt(createdThisWeek.count)
       },
       by_status: byStatus,
       by_priority: byPriority,
@@ -75,6 +75,7 @@ router.get('/metrics', async (req, res) => {
       recent_activity: recentActivity
     });
   } catch (error) {
+    console.error('Error fetching metrics:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -83,27 +84,27 @@ router.get('/metrics', async (req, res) => {
 router.get('/burndown', async (req, res) => {
   try {
     const { days = 14 } = req.query;
+    const daysInt = parseInt(days);
     
+    // PostgreSQL generate_series for date ranges
     const data = await allQuery(`
-      WITH RECURSIVE dates(date) AS (
-        SELECT date('now', '-${days} days')
-        UNION ALL
-        SELECT date(date, '+1 day')
-        FROM dates
-        WHERE date < date('now')
-      )
       SELECT 
-        dates.date,
-        COUNT(CASE WHEN t.status = 'done' AND date(t.completed_at) <= dates.date THEN 1 END) as completed,
-        COUNT(CASE WHEN date(t.created_at) <= dates.date AND (t.status != 'done' OR date(t.completed_at) > dates.date) THEN 1 END) as remaining
-      FROM dates
-      LEFT JOIN tasks t ON date(t.created_at) <= dates.date
-      GROUP BY dates.date
-      ORDER BY dates.date
-    `);
+        d.date::date as date,
+        COUNT(CASE WHEN t.status = 'done' AND DATE(t.completed_at) <= d.date THEN 1 END) as completed,
+        COUNT(CASE WHEN DATE(t.created_at) <= d.date AND (t.status != 'done' OR DATE(t.completed_at) > d.date) THEN 1 END) as remaining
+      FROM generate_series(
+        CURRENT_DATE - ($1 || ' days')::interval,
+        CURRENT_DATE,
+        '1 day'::interval
+      ) AS d(date)
+      LEFT JOIN tasks t ON DATE(t.created_at) <= d.date
+      GROUP BY d.date
+      ORDER BY d.date
+    `, [daysInt]);
 
-    res.json({ days: parseInt(days), data });
+    res.json({ days: daysInt, data });
   } catch (error) {
+    console.error('Error fetching burndown:', error);
     res.status(500).json({ error: error.message });
   }
 });
