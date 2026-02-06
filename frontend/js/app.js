@@ -146,7 +146,14 @@
   }
 
   function applyFilters(tasks) {
+    // Get fridge project IDs
+    const fridgeProjectIds = (state.projects || [])
+      .filter(p => p.is_fridge)
+      .map(p => String(p.id));
+
     return tasks.filter(task => {
+      // Exclude tasks from fridge projects (unless explicitly filtering to that project)
+      if (!state.filters.project && fridgeProjectIds.includes(String(task.project_id))) return false;
       if (state.filters.priority && task.priority !== state.filters.priority) return false;
       if (state.filters.project && String(task.project_id) !== String(state.filters.project)) return false;
       if (state.filters.assignee) {
