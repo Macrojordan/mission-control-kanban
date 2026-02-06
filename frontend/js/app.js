@@ -272,8 +272,10 @@
 
       item.addEventListener('click', (event) => {
         if (event.target.closest('.project-action')) return;
-        state.filters.project = String(project.id);
-        elements.filterProject.value = String(project.id);
+        const projectId = String(project.id);
+        const shouldClear = projectId === '1' || state.filters.project === projectId;
+        state.filters.project = shouldClear ? '' : projectId;
+        elements.filterProject.value = shouldClear ? '' : projectId;
         renderKanban();
       });
 
