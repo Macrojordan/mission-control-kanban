@@ -88,6 +88,7 @@
           name: 'Geral',
           description: 'Projeto padrão para tarefas diversas',
           color: '#6366f1',
+          is_fridge: false,
           created_at: now,
           updated_at: now
         });
@@ -183,7 +184,10 @@
   }
 
   function listProjectsLocal() {
-    return storage.getProjects();
+    return storage.getProjects().map(project => ({
+      ...project,
+      is_fridge: !!project.is_fridge
+    }));
   }
 
   function listCommentsLocal(taskId) {
@@ -450,6 +454,7 @@
             name: payload.name,
             description: payload.description || '',
             color: payload.color || '#6366f1',
+            is_fridge: !!payload.is_fridge,
             created_at: now,
             updated_at: now,
             task_count: 0
@@ -468,6 +473,19 @@
           const idx = projects.findIndex(p => String(p.id) === String(id));
           if (idx === -1) return null;
           projects[idx] = { ...projects[idx], ...payload, updated_at: getNowIso() };
+          storage.setProjects(projects);
+          return projects[idx];
+        }
+      );
+    },
+    async setProjectFridge(id, isFridge) {
+      return safeCall(
+        async () => request(`${API_BASE}/projects/${id}/fridge`, { method: 'PUT', body: JSON.stringify({ is_fridge: !!isFridge }) }),
+        () => {
+          const projects = storage.getProjects();
+          const idx = projects.findIndex(p => String(p.id) === String(id));
+          if (idx === -1) return null;
+          projects[idx] = { ...projects[idx], is_fridge: !!isFridge, updated_at: getNowIso() };
           storage.setProjects(projects);
           return projects[idx];
         }

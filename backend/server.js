@@ -80,7 +80,7 @@ app.use('/api', (req, res, next) => {
 
 // Routes
 app.use('/api/tasks', require('./routes/tasks'));
-app.use('/api/projects', require('./routes/projects'));
+app.use('/api/projects', require('./routes/projects')); // includes fridge toggle/filter
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/randy', require('./routes/randy'));
 app.use('/api/dashboard', require('./routes/dashboard'));

@@ -18,6 +18,8 @@
     dragTaskId: null
   };
 
+  let projectContextMenu = null;
+
   const elements = {
     sidebar: document.getElementById('sidebar'),
     sidebarToggle: document.getElementById('sidebarToggle'),
@@ -37,6 +39,7 @@
     btnNewTask: document.getElementById('btnNewTask'),
     btnAddProject: document.getElementById('btnAddProject'),
     projectsList: document.getElementById('projectsList'),
+    fridgeProjectsList: document.getElementById('fridgeProjectsList'),
     kanbanBoard: document.getElementById('kanbanBoard'),
     randyBadge: document.getElementById('randyBadge'),
     views: {
@@ -135,6 +138,13 @@
     };
   }
 
+  function normalizeProject(project) {
+    return {
+      ...project,
+      is_fridge: !!project.is_fridge
+    };
+  }
+
   function applyFilters(tasks) {
     return tasks.filter(task => {
       if (state.filters.priority && task.priority !== state.filters.priority) return false;
@@ -179,24 +189,112 @@
     });
   }
 
+  function ensureProjectContextMenu() {
+    if (projectContextMenu) return;
+    projectContextMenu = document.createElement('div');
+    projectContextMenu.className = 'project-context-menu';
+    document.body.appendChild(projectContextMenu);
+
+    document.addEventListener('click', (event) => {
+      if (!projectContextMenu) return;
+      if (projectContextMenu.contains(event.target)) return;
+      if (event.target.closest('.project-action')) return;
+      hideProjectContextMenu();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') hideProjectContextMenu();
+    });
+
+    window.addEventListener('resize', hideProjectContextMenu);
+    window.addEventListener('scroll', hideProjectContextMenu, true);
+  }
+
+  function hideProjectContextMenu() {
+    if (!projectContextMenu) return;
+    projectContextMenu.style.display = 'none';
+  }
+
+  function openProjectContextMenu(project, coords) {
+    ensureProjectContextMenu();
+    projectContextMenu.innerHTML = '';
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.textContent = project.is_fridge ? 'Restaurar da Geladeira' : 'Mover para Geladeira';
+    action.addEventListener('click', async () => {
+      await toggleProjectFridge(project, !project.is_fridge);
+      hideProjectContextMenu();
+    });
+
+    projectContextMenu.appendChild(action);
+    projectContextMenu.style.display = 'block';
+
+    const menuRect = projectContextMenu.getBoundingClientRect();
+    const left = Math.min(coords.x, window.innerWidth - menuRect.width - 8);
+    const top = Math.min(coords.y, window.innerHeight - menuRect.height - 8);
+    projectContextMenu.style.left = `${Math.max(8, left)}px`;
+    projectContextMenu.style.top = `${Math.max(8, top)}px`;
+  }
+
+  async function toggleProjectFridge(project, shouldFridge) {
+    await Api.setProjectFridge(project.id, shouldFridge);
+    await refreshData();
+  }
+
   function renderProjects() {
     elements.projectsList.innerHTML = '';
-    const projects = state.projects;
+    if (elements.fridgeProjectsList) {
+      elements.fridgeProjectsList.innerHTML = '';
+    }
 
-    projects.forEach(project => {
+    const projects = state.projects || [];
+    const activeProjects = projects.filter(project => !project.is_fridge);
+    const fridgeProjects = projects.filter(project => project.is_fridge);
+
+    const renderProjectItem = (project, container) => {
       const item = document.createElement('div');
-      item.className = 'project-item';
+      item.className = `project-item${project.is_fridge ? ' project-item-fridge' : ''}`;
       item.innerHTML = `
         <span class="project-color" style="background:${project.color}"></span>
         <span class="project-name">${project.name}</span>
+        <button class="project-action" type="button" title="Opções">⋯</button>
       `;
-      item.addEventListener('click', () => {
+
+      const actionButton = item.querySelector('.project-action');
+
+      item.addEventListener('click', (event) => {
+        if (event.target.closest('.project-action')) return;
         state.filters.project = String(project.id);
         elements.filterProject.value = String(project.id);
         renderKanban();
       });
-      elements.projectsList.appendChild(item);
-    });
+
+      item.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        openProjectContextMenu(project, { x: event.clientX, y: event.clientY });
+      });
+
+      if (actionButton) {
+        actionButton.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const rect = actionButton.getBoundingClientRect();
+          openProjectContextMenu(project, { x: rect.left, y: rect.bottom + 6 });
+        });
+      }
+
+      container.appendChild(item);
+    };
+
+    activeProjects.forEach(project => renderProjectItem(project, elements.projectsList));
+
+    if (elements.fridgeProjectsList) {
+      if (fridgeProjects.length) {
+        fridgeProjects.forEach(project => renderProjectItem(project, elements.fridgeProjectsList));
+      } else {
+        elements.fridgeProjectsList.innerHTML = '<div class="empty">Sem projetos na geladeira.</div>';
+      }
+    }
 
     const projectOptions = ['<option value="">Todos</option>'].concat(
       projects.map(project => `<option value="${project.id}">${project.name}</option>`)
@@ -584,7 +682,7 @@
       Api.getTasks(),
       Api.getDashboardMetrics()
     ]);
-    state.projects = projects || [];
+    state.projects = (projects || []).map(normalizeProject);
     state.tasks = (tasks || []).map(normalizeTask);
 
     renderProjects();

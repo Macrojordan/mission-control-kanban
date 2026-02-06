@@ -56,9 +56,15 @@ async function initDatabase() {
           name TEXT NOT NULL,
           description TEXT,
           color TEXT DEFAULT '#6366f1',
+          is_fridge BOOLEAN DEFAULT false,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+      `);
+
+      await client.query(`
+        ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS is_fridge BOOLEAN DEFAULT false
       `);
 
       await client.query(`
@@ -127,8 +133,8 @@ async function initDatabase() {
 
       // Insert default project
       await client.query(`
-        INSERT INTO projects (id, name, description, color)
-        VALUES (1, 'Geral', 'Projeto padrão para tarefas diversas', '#6366f1')
+        INSERT INTO projects (id, name, description, color, is_fridge)
+        VALUES (1, 'Geral', 'Projeto padrão para tarefas diversas', '#6366f1', false)
         ON CONFLICT (id) DO NOTHING
       `);
 

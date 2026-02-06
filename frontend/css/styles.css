@@ -263,8 +263,16 @@ body {
   color: var(--text-secondary);
 }
 
+.project-item-fridge {
+  color: var(--text-muted);
+}
+
 .project-item:hover {
   background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.project-item:hover .project-action {
   color: var(--text-primary);
 }
 
@@ -280,6 +288,64 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+}
+
+.project-action {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.project-action:hover {
+  background: var(--bg-tertiary);
+}
+
+.sidebar-fridge {
+  flex: 0 0 auto;
+  margin: 0 12px 16px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.sidebar-fridge h3 {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.project-context-menu {
+  position: fixed;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  min-width: 180px;
+  z-index: 2000;
+  display: none;
+  padding: 6px;
+}
+
+.project-context-menu button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.project-context-menu button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .btn-add-project {
