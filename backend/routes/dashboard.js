@@ -1,9 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { allQuery, getQuery } = require('../database');
+const { allQuery, getQuery, isConnected } = require('../database');
 
 // Dashboard metrics
 router.get('/metrics', async (req, res) => {
+  if (!isConnected()) {
+    return res.json({
+      totals: { all: 0, completed_today: 0, created_this_week: 0 },
+      by_status: [],
+      by_priority: [],
+      by_project: [],
+      avg_completion_hours: 0,
+      recent_activity: []
+    });
+  }
+
   try {
     // Total de tarefas
     const totalTasks = await getQuery('SELECT COUNT(*) as count FROM tasks');
@@ -82,6 +93,10 @@ router.get('/metrics', async (req, res) => {
 
 // Burndown chart data
 router.get('/burndown', async (req, res) => {
+  if (!isConnected()) {
+    return res.json({ days: 14, data: [] });
+  }
+
   try {
     const { days = 14 } = req.query;
     const daysInt = parseInt(days);

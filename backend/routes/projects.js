@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { allQuery, getQuery, runQuery } = require('../database');
+const { allQuery, getQuery, runQuery, isConnected } = require('../database');
 
 // Listar todos os projetos
 router.get('/', async (req, res) => {
+  if (!isConnected()) {
+    return res.json([]);
+  }
+
   try {
     const projects = await allQuery(`
       SELECT p.*, COUNT(t.id) as task_count
@@ -21,6 +25,10 @@ router.get('/', async (req, res) => {
 
 // Obter projeto específico com tarefas
 router.get('/:id', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const project = await getQuery('SELECT * FROM projects WHERE id = $1', [req.params.id]);
     if (!project) {
@@ -40,6 +48,10 @@ router.get('/:id', async (req, res) => {
 
 // Criar projeto
 router.post('/', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected - use localStorage mode' });
+  }
+
   try {
     const { name, description, color } = req.body;
     
@@ -58,6 +70,10 @@ router.post('/', async (req, res) => {
 
 // Atualizar projeto
 router.put('/:id', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const { name, description, color } = req.body;
     
@@ -80,6 +96,10 @@ router.put('/:id', async (req, res) => {
 
 // Deletar projeto
 router.delete('/:id', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const result = await runQuery('DELETE FROM projects WHERE id = $1 RETURNING *', [req.params.id]);
     

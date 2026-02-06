@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { allQuery, getQuery, runQuery } = require('../database');
+const { allQuery, getQuery, runQuery, isConnected } = require('../database');
 const { logActivity, notifyRandy } = require('../middleware/notifications');
 
 // Listar todas as tarefas
 router.get('/', async (req, res) => {
+  // Return empty array if database not connected (frontend will use localStorage)
+  if (!isConnected()) {
+    return res.json([]);
+  }
+
   try {
     const { status, project_id, priority, assigned_to, search, tag } = req.query;
     let sql = `
@@ -68,6 +73,10 @@ router.get('/', async (req, res) => {
 
 // Obter uma tarefa específica
 router.get('/:id', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const task = await getQuery(`
       SELECT t.*, p.name as project_name, p.color as project_color
@@ -115,6 +124,10 @@ router.get('/:id', async (req, res) => {
 
 // Criar nova tarefa
 router.post('/', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected - use localStorage mode' });
+  }
+
   try {
     const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, randy_status } = req.body;
     
@@ -152,6 +165,10 @@ router.post('/', async (req, res) => {
 
 // Atualizar tarefa
 router.put('/:id', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const { title, description, status, priority, project_id, assigned_to, tags, estimated_hours, actual_hours, randy_status } = req.body;
     
@@ -217,6 +234,10 @@ router.put('/:id', async (req, res) => {
 
 // Mover tarefa (drag & drop)
 router.patch('/:id/move', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const { status, position } = req.body;
 
@@ -255,6 +276,10 @@ router.patch('/:id/move', async (req, res) => {
 
 // Deletar tarefa
 router.delete('/:id', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const task = await getQuery('SELECT title FROM tasks WHERE id = $1', [req.params.id]);
     if (!task) {

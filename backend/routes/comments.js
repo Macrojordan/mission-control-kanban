@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { allQuery, runQuery } = require('../database');
+const { allQuery, runQuery, isConnected } = require('../database');
 
 // Listar comentários de uma tarefa
 router.get('/task/:taskId', async (req, res) => {
+  if (!isConnected()) {
+    return res.json([]);
+  }
+
   try {
     const comments = await allQuery(`
       SELECT * FROM comments WHERE task_id = $1 ORDER BY created_at ASC
@@ -17,6 +21,10 @@ router.get('/task/:taskId', async (req, res) => {
 
 // Adicionar comentário
 router.post('/', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const { task_id, author, content } = req.body;
     
@@ -35,6 +43,10 @@ router.post('/', async (req, res) => {
 
 // Deletar comentário
 router.delete('/:id', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const result = await runQuery('DELETE FROM comments WHERE id = $1 RETURNING *', [req.params.id]);
     

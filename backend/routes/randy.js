@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { allQuery, getQuery, runQuery } = require('../database');
+const { allQuery, getQuery, runQuery, isConnected } = require('../database');
 
 // Endpoint especial para Randy ver suas tarefas
 router.get('/tasks', async (req, res) => {
+  if (!isConnected()) {
+    return res.json({ assigned_to: 'randy', total: 0, tasks: [] });
+  }
+
   try {
     const { status } = req.query;
     let sql = `
@@ -56,6 +60,10 @@ router.get('/tasks', async (req, res) => {
 
 // Randy marca tarefa como completa
 router.post('/tasks/:id/complete', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const task = await getQuery('SELECT * FROM tasks WHERE id = $1', [req.params.id]);
     if (!task) {
@@ -82,6 +90,10 @@ router.post('/tasks/:id/complete', async (req, res) => {
 
 // Randy atualiza progresso de uma tarefa
 router.post('/tasks/:id/progress', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     const { status, actual_hours, comment, randy_status } = req.body;
     
@@ -137,11 +149,14 @@ router.post('/tasks/:id/progress', async (req, res) => {
 
 // Notificações para Randy
 router.get('/notifications', async (req, res) => {
+  if (!isConnected()) {
+    return res.json({ notifications: [] });
+  }
+
   try {
     const { unread_only } = req.query;
     let sql = 'SELECT * FROM randy_notifications WHERE 1=1';
     const params = [];
-    let paramIndex = 1;
 
     if (unread_only === 'true') {
       sql += ` AND read = FALSE`;
@@ -159,6 +174,10 @@ router.get('/notifications', async (req, res) => {
 
 // Marcar notificação como lida
 router.post('/notifications/:id/read', async (req, res) => {
+  if (!isConnected()) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+
   try {
     await runQuery(`
       UPDATE randy_notifications SET read = TRUE WHERE id = $1
@@ -172,6 +191,17 @@ router.post('/notifications/:id/read', async (req, res) => {
 
 // Estatísticas do Randy
 router.get('/stats', async (req, res) => {
+  if (!isConnected()) {
+    return res.json({
+      total: 0,
+      completed: 0,
+      in_progress: 0,
+      completion_rate: 0,
+      avg_completion_hours: 0,
+      by_priority: []
+    });
+  }
+
   try {
     const totalTasks = await getQuery(`
       SELECT COUNT(*) as count FROM tasks WHERE assigned_to = 'randy'

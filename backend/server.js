@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
-const { initDatabase, pool } = require('./database');
+const { initDatabase, pool, isConnected, testConnection } = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,6 +72,12 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
 
+// Database status middleware - adds db status to requests
+app.use('/api', (req, res, next) => {
+  req.dbConnected = isConnected();
+  next();
+});
+
 // Routes
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/projects', require('./routes/projects'));
@@ -88,17 +94,26 @@ app.get('/', (req, res) => {
 app.get('/health', async (req, res) => {
   try {
     // Test database connectivity
-    await pool.query('SELECT 1');
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      database: 'connected'
-    });
+    const dbOk = await testConnection();
+    if (dbOk) {
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        database: 'connected'
+      });
+    } else {
+      res.status(503).json({ 
+        status: 'degraded', 
+        timestamp: new Date().toISOString(),
+        database: 'disconnected',
+        message: 'Database not connected - frontend will use localStorage'
+      });
+    }
   } catch (err) {
     res.status(503).json({ 
       status: 'error', 
       timestamp: new Date().toISOString(),
-      database: 'disconnected',
+      database: 'error',
       error: err.message
     });
   }
@@ -107,12 +122,20 @@ app.get('/health', async (req, res) => {
 // API health check
 app.get('/api/health', async (req, res) => {
   try {
-    await pool.query('SELECT 1');
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      database: 'connected'
-    });
+    const dbOk = await testConnection();
+    if (dbOk) {
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        database: 'connected'
+      });
+    } else {
+      res.status(503).json({ 
+        status: 'degraded', 
+        timestamp: new Date().toISOString(),
+        database: 'disconnected'
+      });
+    }
   } catch (err) {
     res.status(503).json({ 
       status: 'error', 
@@ -133,18 +156,22 @@ app.use((err, req, res, next) => {
 async function startServer() {
   try {
     await initDatabase();
-    console.log('✅ Database initialized');
-    
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Mission Control running at http://0.0.0.0:${PORT}`);
-      console.log(`📊 Dashboard: http://localhost:${PORT}`);
-      console.log(`🤖 API Randy: http://localhost:${PORT}/api/randy`);
-      console.log(`🔒 Password protected`);
-    });
+    if (isConnected()) {
+      console.log('✅ Database connected');
+    } else {
+      console.log('⚠️  Database not connected - server will run in degraded mode');
+    }
   } catch (err) {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
+    console.error('❌ Database initialization failed:', err.message);
+    console.log('⚠️  Starting server without database - frontend will use localStorage');
   }
+  
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Mission Control running at http://0.0.0.0:${PORT}`);
+    console.log(`📊 Dashboard: http://localhost:${PORT}`);
+    console.log(`🤖 API Randy: http://localhost:${PORT}/api/randy`);
+    console.log(`🔒 Password protected`);
+  });
 }
 
 startServer();

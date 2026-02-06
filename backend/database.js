@@ -1,20 +1,51 @@
 const { Pool } = require('pg');
 
-// Use Render's DATABASE_URL or fallback to local PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/mission_control',
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Check if DATABASE_URL is set
+const hasDatabaseUrl = !!process.env.DATABASE_URL;
 
-// Handle pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected database error:', err);
-});
+let pool = null;
+let isConnected = false;
+let connectionError = null;
+
+if (hasDatabaseUrl) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 5, // Reduced for free tier
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000, // 5s timeout
+  });
+
+  pool.on('error', (err) => {
+    console.error('Unexpected database error:', err);
+    isConnected = false;
+  });
+} else {
+  console.warn('⚠️  DATABASE_URL not set - database operations will fail gracefully');
+  connectionError = new Error('DATABASE_URL not configured');
+}
+
+async function testConnection() {
+  if (!pool) return false;
+  try {
+    await pool.query('SELECT 1');
+    isConnected = true;
+    connectionError = null;
+    return true;
+  } catch (err) {
+    isConnected = false;
+    connectionError = err;
+    console.error('Database connection test failed:', err.message);
+    return false;
+  }
+}
 
 async function initDatabase() {
+  if (!pool) {
+    console.log('⚠️  No database pool available - skipping initialization');
+    return false;
+  }
+
   try {
     const client = await pool.connect();
     try {
@@ -101,27 +132,27 @@ async function initDatabase() {
         ON CONFLICT (id) DO NOTHING
       `);
 
-      // Create sequence for id 1 if it doesn't exist
-      await client.query(`
-        SELECT setval('projects_id_seq', COALESCE((SELECT MAX(id) FROM projects), 1), true)
-      `);
-
       console.log('✅ PostgreSQL database initialized');
+      isConnected = true;
+      return true;
     } finally {
       client.release();
     }
   } catch (err) {
-    console.error('❌ Database initialization error:', err);
-    throw err;
+    console.error('❌ Database initialization error:', err.message);
+    isConnected = false;
+    connectionError = err;
+    return false;
   }
 }
 
 async function runQuery(sql, params = []) {
+  if (!pool) throw new Error('Database not connected');
   const client = await pool.connect();
   try {
     const result = await client.query(sql, params);
     return { 
-      id: result.rows[0]?.id || result.rows[0]?.lastID,
+      id: result.rows[0]?.id,
       changes: result.rowCount,
       rows: result.rows
     };
@@ -131,6 +162,7 @@ async function runQuery(sql, params = []) {
 }
 
 async function getQuery(sql, params = []) {
+  if (!pool) throw new Error('Database not connected');
   const client = await pool.connect();
   try {
     const result = await client.query(sql, params);
@@ -141,6 +173,7 @@ async function getQuery(sql, params = []) {
 }
 
 async function allQuery(sql, params = []) {
+  if (!pool) throw new Error('Database not connected');
   const client = await pool.connect();
   try {
     const result = await client.query(sql, params);
@@ -152,17 +185,24 @@ async function allQuery(sql, params = []) {
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, closing database pool...');
-  await pool.end();
+  if (pool) {
+    console.log('SIGTERM received, closing database pool...');
+    await pool.end();
+  }
 });
 
 process.on('SIGINT', async () => {
-  console.log('SIGINT received, closing database pool...');
-  await pool.end();
+  if (pool) {
+    console.log('SIGINT received, closing database pool...');
+    await pool.end();
+  }
 });
 
 module.exports = {
   pool,
+  isConnected: () => isConnected,
+  getConnectionError: () => connectionError,
+  testConnection,
   initDatabase,
   runQuery,
   getQuery,
