@@ -32,6 +32,10 @@
           <span class="nav-icon">📊</span>
           <span class="nav-text">Dashboard</span>
         </a>
+        <a href="#" class="nav-item" data-view="activity">
+          <span class="nav-icon">🕐</span>
+          <span class="nav-text">Activity Feed</span>
+        </a>
         <a href="#" class="nav-item" data-view="randy">
           <img src="assets/randy-3.jpg" alt="Randy" class="nav-icon randy-nav-avatar">
           <span class="nav-text">Tarefas do Randy</span>
@@ -77,8 +81,13 @@
           <span class="header-subtitle" id="headerSubtitle"></span>
         </div>
         <div class="header-right">
+          <button class="btn-global-search" id="btnGlobalSearch" title="Global Search (Ctrl+K)">
+            <span class="search-icon">🔍</span>
+            <span class="search-label">Search...</span>
+            <kbd class="search-kbd">⌘K</kbd>
+          </button>
           <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Buscar tarefas...">
+            <input type="text" id="searchInput" placeholder="Filtrar tarefas...">
             <span class="search-icon">🔍</span>
           </div>
           <button class="btn-filter" id="btnFilter">
@@ -245,6 +254,22 @@
             <h3>Atividades Recentes</h3>
             <div id="activityList" class="activity-list">
               <!-- Atividades serão carregadas aqui -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Feed View -->
+        <div class="view view-activity" id="activityView">
+          <div class="activity-feed-page">
+            <div class="activity-feed-header">
+              <h3>🕐 Activity Feed</h3>
+              <button class="btn-secondary" id="btnRefreshActivity">🔄 Refresh</button>
+            </div>
+            <div class="activity-feed-list" id="activityFeedList">
+              <div class="empty">Loading activities...</div>
+            </div>
+            <div class="activity-feed-footer">
+              <button class="btn-secondary" id="btnLoadMoreActivity">Load More</button>
             </div>
           </div>
         </div>
@@ -472,6 +497,34 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-secondary" id="btnCloseTemplates">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Search Modal -->
+  <div class="global-search-overlay" id="globalSearchOverlay">
+    <div class="global-search-modal">
+      <div class="global-search-input-wrap">
+        <span class="global-search-icon">🔍</span>
+        <input type="text" id="globalSearchInput" placeholder="Search tasks, memory, documents..." autocomplete="off" spellcheck="false">
+        <kbd class="global-search-esc">ESC</kbd>
+      </div>
+      <div class="global-search-results" id="globalSearchResults">
+        <div class="global-search-empty">Type to search across everything...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Preview Modal -->
+  <div class="modal" id="docPreviewModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-doc-preview">
+      <div class="modal-header">
+        <h2 id="docPreviewTitle">Document</h2>
+        <button class="modal-close" id="docPreviewClose">×</button>
+      </div>
+      <div class="modal-body">
+        <pre class="doc-preview-content" id="docPreviewContent"></pre>
       </div>
     </div>
   </div>

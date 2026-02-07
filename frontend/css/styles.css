@@ -2060,6 +2060,96 @@ body {
   }
 }
 
+/* ========================================
+   Activity Feed Page
+   ======================================== */
+.view-activity {
+  padding: 24px;
+}
+
+.activity-feed-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.activity-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.activity-feed-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.activity-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-feed-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+}
+
+.activity-feed-item:hover {
+  border-color: var(--accent-primary);
+}
+
+.activity-feed-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-feed-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.activity-feed-actor {
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.activity-feed-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.activity-feed-footer {
+  margin-top: 16px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .view-activity {
+    padding: 16px;
+  }
+
+  .activity-feed-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
 @media (max-width: 480px) {
   body {
     font-size: 15px;

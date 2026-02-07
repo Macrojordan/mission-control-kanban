@@ -86,6 +86,8 @@ app.use('/api/randy', require('./routes/randy'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/notion', require('./routes/notion'));
 app.use('/api/templates', require('./routes/templates'));
+app.use('/api/search', require('./routes/search'));
+app.use('/api/activities', require('./routes/activities'));
 
 // Main route
 app.get('/', (req, res) => {

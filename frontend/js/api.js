@@ -635,10 +635,31 @@
         () => []
       );
     },
+    async getActivities(limit = 50, offset = 0) {
+      return safeCall(
+        async () => request(`${API_BASE}/activities?limit=${limit}&offset=${offset}`),
+        () => storage.getActivity().slice(offset, offset + limit)
+      );
+    },
     async listNotionPages() {
       return safeCall(
         async () => request(`${API_BASE}/notion/pages`),
         () => []
+      );
+    },
+    async globalSearch(query) {
+      if (!query || query.length < 2) return [];
+      const url = `${API_BASE}/search?q=${encodeURIComponent(query)}`;
+      return safeCall(
+        async () => request(url),
+        () => []
+      );
+    },
+    async getFileContent(filePath) {
+      const url = `${API_BASE}/search/file?path=${encodeURIComponent(filePath)}`;
+      return safeCall(
+        async () => request(url),
+        () => null
       );
     }
   };

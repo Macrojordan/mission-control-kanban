@@ -87,6 +87,7 @@
     views: {
       kanban: document.getElementById('kanbanView'),
       dashboard: document.getElementById('dashboardView'),
+      activity: document.getElementById('activityView'),
       randy: document.getElementById('randyView')
     },
     metrics: {
@@ -1295,6 +1296,15 @@
     });
 
     bindDragAndDrop();
+
+    const btnRefreshActivity = document.getElementById('btnRefreshActivity');
+    if (btnRefreshActivity) {
+      btnRefreshActivity.addEventListener('click', () => loadActivityFeed(false));
+    }
+    const btnLoadMore = document.getElementById('btnLoadMoreActivity');
+    if (btnLoadMore) {
+      btnLoadMore.addEventListener('click', () => loadActivityFeed(true));
+    }
   }
 
   function setView(view) {
@@ -1308,6 +1318,9 @@
 
     if (state.view === 'dashboard') {
       elements.pageTitle.textContent = 'Dashboard';
+    } else if (state.view === 'activity') {
+      elements.pageTitle.textContent = 'Activity Feed';
+      loadActivityFeed();
     } else if (state.view === 'randy') {
       elements.pageTitle.textContent = 'Randy Tasks';
     } else {
@@ -1335,6 +1348,57 @@
   async function refreshMetrics() {
     const metrics = await Api.getDashboardMetrics();
     renderDashboard(metrics);
+  }
+
+  let activityOffset = 0;
+  const ACTIVITY_LIMIT = 50;
+
+  const ACTION_ICONS = {
+    created: '✨',
+    status_changed: '🔄',
+    moved: '📦',
+    updated: '✏️',
+    deleted: '🗑️',
+    commented: '💬',
+    assigned: '👤'
+  };
+
+  function formatActivityDescription(item) {
+    const actor = item.performed_by || 'System';
+    const taskTitle = item.task_title ? `'${item.task_title}'` : '';
+    const icon = ACTION_ICONS[item.action] || '•';
+    const desc = item.description || item.action;
+    return `<span class="activity-feed-icon">${icon}</span>
+      <span class="activity-feed-actor">${actor}</span> 
+      ${desc} ${taskTitle ? `— ${taskTitle}` : ''}`;
+  }
+
+  function renderActivityFeedItems(activities, append) {
+    const list = document.getElementById('activityFeedList');
+    if (!list) return;
+    if (!append) list.innerHTML = '';
+
+    if (!activities || !activities.length) {
+      if (!append) list.innerHTML = '<div class="empty">No activities yet.</div>';
+      return;
+    }
+
+    activities.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'activity-feed-item';
+      row.innerHTML = `
+        <div class="activity-feed-text">${formatActivityDescription(item)}</div>
+        <div class="activity-feed-time">${formatDate(item.created_at)}</div>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  async function loadActivityFeed(append) {
+    if (!append) activityOffset = 0;
+    const activities = await Api.getActivities(ACTIVITY_LIMIT, activityOffset);
+    renderActivityFeedItems(activities, append);
+    activityOffset += (activities || []).length;
   }
 
   async function refreshHeartbeat() {
