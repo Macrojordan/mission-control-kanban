@@ -88,6 +88,7 @@ app.use('/api/notion', require('./routes/notion'));
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/activities', require('./routes/activities'));
+app.use('/api/sync', require('./routes/sync'));
 
 // Main route
 app.get('/', (req, res) => {

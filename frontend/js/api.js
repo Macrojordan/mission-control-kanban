@@ -661,6 +661,18 @@
         async () => request(url),
         () => null
       );
+    },
+    async triggerSync() {
+      return safeCall(
+        async () => request(`${API_BASE}/sync`, { method: 'POST' }),
+        () => ({ success: false, error: 'Offline' })
+      );
+    },
+    async getSyncStatus() {
+      return safeCall(
+        async () => request(`${API_BASE}/sync/status`),
+        () => ({ lastSync: null, isSyncing: false })
+      );
     }
   };
 

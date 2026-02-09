@@ -492,6 +492,133 @@ body {
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
 }
 
+/* ========================================
+   Sync Controls
+   ======================================== */
+.sync-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 12px;
+}
+
+.btn-sync {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn-sync:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-sync:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-sync.syncing .sync-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.sync-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: var(--transition);
+}
+
+.sync-status-dot.synced {
+  background: var(--accent-success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.sync-status-dot.syncing {
+  background: var(--accent-warning);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.sync-status-dot.needs-sync {
+  background: var(--accent-danger);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.sync-status-text.synced {
+  color: var(--accent-success);
+}
+
+.sync-status-text.syncing {
+  color: var(--accent-warning);
+}
+
+.sync-status-text.needs-sync {
+  color: var(--accent-danger);
+}
+
+.sync-timestamp {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .sync-controls {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .sync-timestamp {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .sync-controls {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .btn-sync .sync-label {
+    display: none;
+  }
+  
+  .btn-sync {
+    padding: 8px 12px;
+  }
+}
+
 .header-right {
   display: flex;
   align-items: center;

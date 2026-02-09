@@ -55,7 +55,12 @@
     view: 'kanban',
     currentTaskId: null,
     offline: false,
-    dragTaskId: null
+    dragTaskId: null,
+    sync: {
+      lastSync: null,
+      isSyncing: false,
+      status: 'checking' // 'synced', 'syncing', 'needs-sync', 'error'
+    }
   };
 
   let projectContextMenu = null;
@@ -152,7 +157,15 @@
     btnCancelProject: document.getElementById('btnCancelProject'),
     projectName: document.getElementById('projectName'),
     projectDescription: document.getElementById('projectDescription'),
-    projectColor: document.getElementById('projectColor')
+    projectColor: document.getElementById('projectColor'),
+    sync: {
+      btn: document.getElementById('btnSync'),
+      icon: document.getElementById('syncIcon'),
+      status: document.getElementById('syncStatus'),
+      statusDot: document.getElementById('syncStatusDot'),
+      statusText: document.getElementById('syncStatusText'),
+      timestamp: document.getElementById('syncTimestamp')
+    }
   };
 
   const taskModal = ModalManager.bindModal('taskModal', ['#modalClose', '#btnCancel']);
@@ -1410,6 +1423,7 @@
     setupMobileFAB();
     setupPullToRefresh();
     setupOfflineDetection();
+    initSync();
     setView('kanban');
     refreshTemplates();
     refreshData();
@@ -1525,6 +1539,204 @@
       notification.style.transition = 'opacity 0.3s';
       setTimeout(() => notification.remove(), 300);
     }, 3000);
+  }
+
+  // ========================================
+  // Sync with Randy
+  // ========================================
+  const SYNC_STORAGE_KEY = 'mc_last_sync';
+  const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+  function getLastSyncTime() {
+    try {
+      const stored = localStorage.getItem(SYNC_STORAGE_KEY);
+      return stored ? new Date(stored) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setLastSyncTime(date) {
+    try {
+      localStorage.setItem(SYNC_STORAGE_KEY, (date || new Date()).toISOString());
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  function formatTimeAgo(date) {
+    if (!date) return 'Never';
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  }
+
+  function updateSyncUI() {
+    if (!elements.sync.status || !elements.sync.statusDot || !elements.sync.statusText) return;
+
+    const { status, lastSync, isSyncing } = state.sync;
+
+    // Update status dot and text classes
+    elements.sync.statusDot.className = 'sync-status-dot';
+    elements.sync.statusText.className = 'sync-status-text';
+
+    if (isSyncing || status === 'syncing') {
+      elements.sync.statusDot.classList.add('syncing');
+      elements.sync.statusText.classList.add('syncing');
+      elements.sync.statusText.textContent = 'Syncing...';
+      if (elements.sync.btn) {
+        elements.sync.btn.disabled = true;
+        elements.sync.btn.classList.add('syncing');
+      }
+    } else if (status === 'synced') {
+      elements.sync.statusDot.classList.add('synced');
+      elements.sync.statusText.classList.add('synced');
+      elements.sync.statusText.textContent = 'Synced ✓';
+      if (elements.sync.btn) {
+        elements.sync.btn.disabled = false;
+        elements.sync.btn.classList.remove('syncing');
+      }
+    } else if (status === 'needs-sync') {
+      elements.sync.statusDot.classList.add('needs-sync');
+      elements.sync.statusText.classList.add('needs-sync');
+      elements.sync.statusText.textContent = 'Needs Sync';
+      if (elements.sync.btn) {
+        elements.sync.btn.disabled = false;
+        elements.sync.btn.classList.remove('syncing');
+      }
+    } else if (status === 'error') {
+      elements.sync.statusDot.classList.add('needs-sync');
+      elements.sync.statusText.classList.add('needs-sync');
+      elements.sync.statusText.textContent = 'Sync Failed';
+      if (elements.sync.btn) {
+        elements.sync.btn.disabled = false;
+        elements.sync.btn.classList.remove('syncing');
+      }
+    } else {
+      elements.sync.statusText.textContent = 'Checking...';
+      if (elements.sync.btn) {
+        elements.sync.btn.disabled = false;
+        elements.sync.btn.classList.remove('syncing');
+      }
+    }
+
+    // Update timestamp
+    if (elements.sync.timestamp) {
+      elements.sync.timestamp.textContent = lastSync ? `Last: ${formatTimeAgo(lastSync)}` : '';
+    }
+  }
+
+  async function checkSyncStatus() {
+    const localLastSync = getLastSyncTime();
+    
+    // Also check server status if online
+    if (!state.offline) {
+      try {
+        const serverStatus = await Api.getSyncStatus();
+        if (serverStatus.lastSync) {
+          const serverDate = new Date(serverStatus.lastSync);
+          // Use the most recent sync time
+          if (!localLastSync || serverDate > localLastSync) {
+            state.sync.lastSync = serverDate;
+            setLastSyncTime(serverDate);
+          }
+        }
+        if (serverStatus.isSyncing) {
+          state.sync.status = 'syncing';
+          state.sync.isSyncing = true;
+          updateSyncUI();
+          return;
+        }
+      } catch (e) {
+        // Ignore errors, fall back to local
+      }
+    }
+
+    const lastSync = state.sync.lastSync || localLastSync;
+
+    if (!lastSync) {
+      state.sync.status = 'needs-sync';
+    } else {
+      const now = new Date();
+      const diff = now - lastSync;
+      if (diff > SYNC_INTERVAL) {
+        state.sync.status = 'needs-sync';
+      } else {
+        state.sync.status = 'synced';
+      }
+    }
+
+    updateSyncUI();
+  }
+
+  async function triggerSync() {
+    if (state.sync.isSyncing) return;
+
+    state.sync.isSyncing = true;
+    state.sync.status = 'syncing';
+    updateSyncUI();
+
+    showNotification('🔄 Syncing with Randy...', 'info');
+
+    try {
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const now = new Date();
+        setLastSyncTime(now);
+        state.sync.lastSync = now;
+        state.sync.status = 'synced';
+        showNotification('✅ Sync triggered successfully', 'success');
+
+        // Refresh data after a short delay to allow Randy to process
+        setTimeout(() => {
+          refreshData();
+        }, 3000);
+
+        // Check status again after 10 seconds
+        setTimeout(() => {
+          checkSyncStatus();
+        }, 10000);
+      } else {
+        throw new Error(data.error || data.message || 'Sync failed');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      state.sync.status = 'error';
+      showNotification(`❌ Sync failed: ${error.message}`, 'error');
+
+      // Reset after a delay
+      setTimeout(() => {
+        state.sync.isSyncing = false;
+        checkSyncStatus();
+      }, 5000);
+    }
+  }
+
+  function bindSyncEvents() {
+    if (elements.sync.btn) {
+      elements.sync.btn.addEventListener('click', triggerSync);
+    }
+  }
+
+  function initSync() {
+    checkSyncStatus();
+    bindSyncEvents();
+
+    // Check sync status periodically
+    setInterval(checkSyncStatus, 30000); // Check every 30 seconds
   }
 
   init();
