@@ -1,0 +1,31 @@
+# Replit configuration for Mission Control
+run = "./start-replit.sh"
+
+entrypoint = "backend/server.js"
+
+hidden = [".config", "package-lock.json", "node_modules", ".git"]
+
+[nix]
+channel = "stable-24_05"
+
+[env]
+NODE_ENV = "production"
+PORT = "3000"
+
+# Database will be auto-configured by Replit
+# Set these secrets in Replit's Secrets tab:
+# - DATABASE_URL (Replit provides this automatically)
+# - APP_PASSWORD (set to: agentboss2026)
+# - NOTION_TOKEN (optional, for sync)
+# - NOTION_DATABASE_ID (optional, for sync)
+
+[deployment]
+run = ["sh", "-c", "cd backend && npm install && npm start"]
+deploymentTarget = "cloudrun"
+
+[languages.javascript]
+pattern = "**/*.js"
+syntax = "javascript"
+
+[languages.javascript.languageServer]
+start = [ "typescript-language-server", "--stdio" ]
