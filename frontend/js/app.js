@@ -552,6 +552,9 @@
 
       count.textContent = tasks.length;
     });
+    
+    // Update mobile column tab counts
+    updateMobileColumnCounts();
   }
 
   function ensureProjectContextMenu() {
@@ -1420,8 +1423,7 @@
 
   function init() {
     bindEvents();
-    setupMobileFAB();
-    setupPullToRefresh();
+    initMobileFeatures();
     setupOfflineDetection();
     initSync();
     setView('kanban');
@@ -1432,71 +1434,329 @@
     setInterval(refreshHeartbeat, 5000);
   }
 
-  // Mobile Floating Action Button
-  function setupMobileFAB() {
-    if (window.innerWidth <= 768) {
-      const fab = document.createElement('button');
-      fab.className = 'fab-mobile';
-      fab.innerHTML = '+';
-      fab.title = 'Nova Tarefa';
-      fab.addEventListener('click', () => openTaskModal());
-      document.body.appendChild(fab);
-    }
+  // ========================================
+  // Mobile Features - Complete Implementation
+  // ========================================
+  function initMobileFeatures() {
+    if (window.innerWidth > 768) return;
+    
+    initMobileFAB();
+    initMobileColumnTabs();
+    initMobileSwipe();
+    initMobileBottomNav();
+    initMobileSearch();
+    initPullToRefresh();
+    updateMobileColumnCounts();
   }
 
-  // Pull to Refresh for Mobile
-  function setupPullToRefresh() {
-    let touchStartY = 0;
-    let touchEndY = 0;
-    const minSwipeDistance = 100;
+  // Mobile FAB - Floating Action Button
+  function initMobileFAB() {
+    const fab = document.getElementById('fabMobile');
+    if (!fab) return;
     
-    document.addEventListener('touchstart', (e) => {
-      touchStartY = e.changedTouches[0].screenY;
-    }, { passive: true });
+    fab.addEventListener('click', () => {
+      // Add haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(50);
+      openTaskModal(null);
+    });
+  }
+
+  // Mobile Column Tabs
+  function initMobileColumnTabs() {
+    const tabs = document.querySelectorAll('.column-tab');
+    const board = document.getElementById('kanbanBoard');
     
-    document.addEventListener('touchend', (e) => {
-      touchEndY = e.changedTouches[0].screenY;
-      handleSwipe();
-    }, { passive: true });
-    
-    function handleSwipe() {
-      const swipeDistance = touchEndY - touchStartY;
-      const isAtTop = window.scrollY === 0;
+    if (!tabs.length || !board) return;
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => {
+        // Update active tab
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Scroll to column
+        const columns = board.querySelectorAll('.kanban-column');
+        if (columns[index]) {
+          columns[index].scrollIntoView({ behavior: 'smooth', inline: 'start' });
+        }
+        
+        // Update dots
+        updateColumnDots(index);
+        
+        // Haptic feedback
+        if (navigator.vibrate) navigator.vibrate(30);
+      });
+    });
+
+    // Sync tabs with horizontal scroll
+    board.addEventListener('scroll', debounce(() => {
+      const scrollLeft = board.scrollLeft;
+      const columnWidth = board.offsetWidth;
+      const activeIndex = Math.round(scrollLeft / columnWidth);
       
-      if (swipeDistance > minSwipeDistance && isAtTop) {
-        showRefreshIndicator();
-        refreshData().then(() => hideRefreshIndicator());
+      tabs.forEach((t, i) => t.classList.toggle('active', i === activeIndex));
+      updateColumnDots(activeIndex);
+    }, 100));
+  }
+
+  // Mobile Swipe Navigation
+  function initMobileSwipe() {
+    const board = document.getElementById('kanbanBoard');
+    const swipeLeft = document.getElementById('swipeLeft');
+    const swipeRight = document.getElementById('swipeRight');
+    
+    if (!board) return;
+
+    let startX = 0;
+    let startY = 0;
+    let isScrolling = false;
+
+    board.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      isScrolling = false;
+    }, { passive: true });
+
+    board.addEventListener('touchmove', (e) => {
+      if (!startX || !startY) return;
+      
+      const x = e.touches[0].clientX;
+      const y = e.touches[0].clientY;
+      const diffX = startX - x;
+      const diffY = startY - y;
+      
+      // Determine if scrolling horizontally or vertically
+      if (!isScrolling) {
+        isScrolling = Math.abs(diffX) > Math.abs(diffY) ? 'horizontal' : 'vertical';
       }
-    }
+      
+      // Show swipe indicators for horizontal scroll
+      if (isScrolling === 'horizontal') {
+        if (diffX > 50) {
+          swipeRight?.classList.add('visible');
+        } else if (diffX < -50) {
+          swipeLeft?.classList.add('visible');
+        }
+      }
+    }, { passive: true });
+
+    board.addEventListener('touchend', () => {
+      swipeLeft?.classList.remove('visible');
+      swipeRight?.classList.remove('visible');
+      startX = 0;
+      startY = 0;
+    });
   }
 
-  function showRefreshIndicator() {
-    const indicator = document.createElement('div');
-    indicator.id = 'refresh-indicator';
-    indicator.innerHTML = '🔄 Atualizando...';
-    indicator.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: var(--accent-primary);
-      color: white;
-      text-align: center;
-      padding: 12px;
-      z-index: 9999;
-      font-size: 14px;
-      font-weight: 500;
-    `;
-    document.body.appendChild(indicator);
+  // Column Dots Indicator
+  function updateColumnDots(activeIndex) {
+    const dots = document.querySelectorAll('.column-dot');
+    dots.forEach((dot, index) => {
+      dot.classList.toggle('active', index === activeIndex);
+    });
   }
 
-  function hideRefreshIndicator() {
-    const indicator = document.getElementById('refresh-indicator');
-    if (indicator) {
-      indicator.style.opacity = '0';
-      indicator.style.transition = 'opacity 0.3s';
-      setTimeout(() => indicator.remove(), 300);
+  // Mobile Bottom Navigation
+  function initMobileBottomNav() {
+    const navItems = document.querySelectorAll('.mobile-bottom-nav .nav-item');
+    
+    navItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const view = item.dataset.view;
+        
+        // Update active state
+        navItems.forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+        
+        // Switch view
+        setView(view);
+        
+        // Haptic feedback
+        if (navigator.vibrate) navigator.vibrate(30);
+      });
+    });
+  }
+
+  // Mobile Search
+  function initMobileSearch() {
+    const btnSearch = document.getElementById('btnMobileSearch');
+    const overlay = document.getElementById('mobileSearchOverlay');
+    const btnClose = document.getElementById('btnCloseMobileSearch');
+    const input = document.getElementById('mobileSearchInput');
+    const results = document.getElementById('mobileSearchResults');
+    
+    if (!btnSearch || !overlay) return;
+
+    // Open search
+    btnSearch.addEventListener('click', () => {
+      overlay.style.display = 'flex';
+      input?.focus();
+      document.body.style.overflow = 'hidden';
+    });
+
+    // Close search
+    const closeSearch = () => {
+      overlay.style.display = 'none';
+      document.body.style.overflow = '';
+      if (input) input.value = '';
+    };
+
+    btnClose?.addEventListener('click', closeSearch);
+
+    // Search input handler
+    input?.addEventListener('input', debounce((e) => {
+      const query = e.target.value.toLowerCase();
+      if (!query) {
+        results.innerHTML = '<div class="empty">Type to search...</div>';
+        return;
+      }
+
+      const filtered = state.tasks.filter(task => 
+        task.title?.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query) ||
+        task.tags?.some(tag => tag.toLowerCase().includes(query))
+      );
+
+      renderMobileSearchResults(filtered, results);
+    }, 300));
+
+    // Close on escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.style.display === 'flex') {
+        closeSearch();
+      }
+    });
+  }
+
+  function renderMobileSearchResults(tasks, container) {
+    if (!tasks.length) {
+      container.innerHTML = '<div class="empty">No tasks found</div>';
+      return;
     }
+
+    container.innerHTML = tasks.map(task => `
+      <div class="task-card priority-${task.priority}" data-task-id="${task.id}" style="margin-bottom: 12px;">
+        <div class="task-header">
+          <div class="task-title">${task.title}</div>
+        </div>
+        <div class="task-meta">
+          <span class="task-project">
+            <span class="project-indicator" style="background: ${task.project_color || '#6366f1'}"></span>
+            ${task.project_name || 'General'}
+          </span>
+          <span class="task-tag tag-${task.tags?.[0] || 'default'}">${task.tags?.[0] || 'task'}</span>
+        </div>
+      </div>
+    `).join('');
+
+    // Add click handlers
+    container.querySelectorAll('.task-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const taskId = card.dataset.taskId;
+        const task = state.tasks.find(t => String(t.id) === taskId);
+        if (task) {
+          document.getElementById('mobileSearchOverlay').style.display = 'none';
+          document.body.style.overflow = '';
+          openTaskModal(task);
+        }
+      });
+    });
+  }
+
+  // Pull to Refresh
+  function initPullToRefresh() {
+    const board = document.getElementById('kanbanBoard');
+    const pullRefresh = document.getElementById('pullRefresh');
+    
+    if (!board || !pullRefresh) return;
+
+    let startY = 0;
+    let isPulling = false;
+    const threshold = 100;
+
+    board.addEventListener('touchstart', (e) => {
+      if (board.scrollTop === 0) {
+        startY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    }, { passive: true });
+
+    board.addEventListener('touchmove', (e) => {
+      if (!isPulling) return;
+      
+      const y = e.touches[0].clientY;
+      const diff = y - startY;
+      
+      if (diff > 0 && diff < threshold * 1.5) {
+        pullRefresh.style.opacity = Math.min(diff / threshold, 1);
+        pullRefresh.style.transform = `translateX(-50%) translateY(${Math.min(diff * 0.5, 60)}px)`;
+        
+        if (diff > threshold) {
+          pullRefresh.classList.add('spinning');
+        }
+      }
+    }, { passive: true });
+
+    board.addEventListener('touchend', () => {
+      if (!isPulling) return;
+      
+      const currentTransform = pullRefresh.style.transform;
+      const pulledEnough = currentTransform && parseFloat(currentTransform.match(/translateY\(([^)]+)\)/)?.[1]) > 30;
+      
+      if (pulledEnough) {
+        pullRefresh.style.transform = 'translateX(-50%) translateY(60px)';
+        refreshData().then(() => {
+          hidePullRefresh();
+        });
+      } else {
+        hidePullRefresh();
+      }
+      
+      isPulling = false;
+    });
+  }
+
+  function hidePullRefresh() {
+    const pullRefresh = document.getElementById('pullRefresh');
+    if (!pullRefresh) return;
+    
+    pullRefresh.style.opacity = '0';
+    pullRefresh.style.transform = 'translateX(-50%) translateY(-60px)';
+    pullRefresh.classList.remove('spinning');
+  }
+
+  // Update mobile column counts in tabs
+  function updateMobileColumnCounts() {
+    const columns = ['backlog', 'todo', 'in_progress', 'review', 'done'];
+    
+    columns.forEach(status => {
+      const count = state.tasks.filter(t => t.status === status).length;
+      const tabCount = document.getElementById(`tabCount-${status}`);
+      if (tabCount) tabCount.textContent = count;
+    });
+  }
+
+  // Debounce utility
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Legacy mobile functions (kept for compatibility)
+  function setupMobileFAB() {
+    initMobileFAB();
+  }
+
+  function setupPullToRefresh() {
+    initPullToRefresh();
   }
 
   // Offline Detection

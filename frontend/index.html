@@ -6,7 +6,11 @@
   <title>Mission Control | Kanban</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/mobile.css">
+  <link rel="stylesheet" href="css/mobile-redesign.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <meta name="theme-color" content="#6366F1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -93,6 +97,13 @@
           <span class="header-subtitle" id="headerSubtitle"></span>
         </div>
         <div class="header-right">
+          <div class="header-avatars">
+            <img src="assets/randy-1.jpg" alt="Randy" class="header-avatar">
+            <div class="header-avatar more">+2</div>
+          </div>
+          <button class="btn-mobile-search" id="btnMobileSearch" title="Search">
+            <span>🔍</span>
+          </button>
           <button class="btn-global-search" id="btnGlobalSearch" title="Global Search (Ctrl+K)">
             <span class="search-icon">🔍</span>
             <span class="search-label">Search...</span>
@@ -140,6 +151,38 @@
         </div>
         <button class="btn-clear-filters" id="btnClearFilters">Limpar</button>
       </div>
+
+      <!-- Mobile Column Tabs -->
+      <div class="mobile-column-tabs" id="mobileColumnTabs">
+        <button class="column-tab active" data-column="backlog">
+          <span class="column-tab-dot" style="background: #94a3b8;"></span>
+          <span>Backlog</span>
+          <span class="column-tab-count" id="tabCount-backlog">0</span>
+        </button>
+        <button class="column-tab" data-column="todo">
+          <span class="column-tab-dot" style="background: #3b82f6;"></span>
+          <span>To Do</span>
+          <span class="column-tab-count" id="tabCount-todo">0</span>
+        </button>
+        <button class="column-tab" data-column="in_progress">
+          <span class="column-tab-dot" style="background: #f59e0b;"></span>
+          <span>In Progress</span>
+          <span class="column-tab-count" id="tabCount-in_progress">0</span>
+        </button>
+        <button class="column-tab" data-column="review">
+          <span class="column-tab-dot" style="background: #fbbf24;"></span>
+          <span>Review</span>
+          <span class="column-tab-count" id="tabCount-review">0</span>
+        </button>
+        <button class="column-tab" data-column="done">
+          <span class="column-tab-dot" style="background: #10b981;"></span>
+          <span>Done</span>
+          <span class="column-tab-count" id="tabCount-done">0</span>
+        </button>
+      </div>
+
+      <!-- Pull to Refresh Indicator -->
+      <div class="pull-refresh" id="pullRefresh">🔄</div>
 
       <!-- Views -->
       <div class="views-container">
@@ -538,6 +581,60 @@
       <div class="modal-body">
         <pre class="doc-preview-content" id="docPreviewContent"></pre>
       </div>
+    </div>
+  </div>
+
+  <!-- Swipe Indicators -->
+  <div class="swipe-indicator left" id="swipeLeft">‹</div>
+  <div class="swipe-indicator right" id="swipeRight">›</div>
+
+  <!-- Column Dots Indicator -->
+  <div class="column-dots" id="columnDots">
+    <div class="column-dot active" data-index="0"></div>
+    <div class="column-dot" data-index="1"></div>
+    <div class="column-dot" data-index="2"></div>
+    <div class="column-dot" data-index="3"></div>
+    <div class="column-dot" data-index="4"></div>
+  </div>
+
+  <!-- Floating Action Button -->
+  <button class="fab-mobile" id="fabMobile" title="Add Task">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+    </svg>
+  </button>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav">
+    <button class="nav-item active" data-view="kanban">
+      <span class="nav-icon">📋</span>
+      <span>Board</span>
+    </button>
+    <button class="nav-item" data-view="dashboard">
+      <span class="nav-icon">📊</span>
+      <span>Stats</span>
+    </button>
+    <button class="nav-item" data-view="activity">
+      <span class="nav-icon">🕐</span>
+      <span>Activity</span>
+    </button>
+    <button class="nav-item" data-view="randy">
+      <img src="assets/randy-3.jpg" alt="Randy" class="nav-avatar">
+      <span>Randy</span>
+    </button>
+  </nav>
+
+  <!-- Mobile Search Overlay -->
+  <div class="mobile-search-overlay" id="mobileSearchOverlay" style="display: none;">
+    <div class="mobile-search-header">
+      <div class="mobile-search-input-wrap">
+        <span class="mobile-search-icon">🔍</span>
+        <input type="text" class="mobile-search-input" id="mobileSearchInput" placeholder="Search tasks...">
+      </div>
+      <button class="mobile-search-close" id="btnCloseMobileSearch">Cancel</button>
+    </div>
+    <div class="mobile-search-results" id="mobileSearchResults">
+      <div class="empty">Type to search...</div>
     </div>
   </div>
 
