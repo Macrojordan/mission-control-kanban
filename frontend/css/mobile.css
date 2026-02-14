@@ -1,0 +1,184 @@
+/* Mobile Improvements for Mission Control */
+/* This file contains mobile-specific fixes */
+
+@media (max-width: 480px) {
+  /* Compact mobile header */
+  .header {
+    padding: 12px;
+    gap: 8px;
+  }
+  
+  .header-left h1 {
+    font-size: 18px;
+    margin: 0;
+  }
+  
+  .header-left .status-indicator {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+  .header-right {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: 100%;
+  }
+  
+  .header-right .search-box {
+    flex: 1;
+    min-width: 0;
+    order: 1;
+  }
+  
+  .header-right .search-box input {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  
+  .header-right .btn-filter {
+    order: 2;
+    padding: 8px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  
+  .header-right .btn-primary {
+    display: none; /* Hide on mobile, use FAB instead */
+  }
+  
+  /* Horizontal scroll kanban */
+  .view-kanban {
+    padding: 12px;
+    overflow: hidden;
+  }
+  
+  .kanban-board {
+    flex-direction: row;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 12px;
+    padding: 4px 4px 80px 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .kanban-board::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .kanban-column {
+    min-width: calc(100vw - 40px);
+    max-width: calc(100vw - 40px);
+    scroll-snap-align: center;
+    flex-shrink: 0;
+  }
+  
+  .kanban-column-header {
+    padding: 12px;
+  }
+  
+  .kanban-column-header h3 {
+    font-size: 14px;
+  }
+  
+  .kanban-tasks {
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+  }
+  
+  /* Smaller task cards */
+  .kanban-task {
+    min-height: 48px;
+    padding: 10px 12px;
+  }
+  
+  .kanban-task .task-title {
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 4px;
+  }
+  
+  .kanban-task .task-meta {
+    font-size: 11px;
+  }
+  
+  .kanban-task .task-actions button {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 6px;
+  }
+  
+  /* Smaller buttons */
+  .btn-primary, .btn-secondary, .btn-filter {
+    min-height: 36px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  /* FAB positioning */
+  .fab-mobile {
+    bottom: 16px;
+    right: 16px;
+    width: 56px;
+    height: 56px;
+  }
+  
+  /* Status indicators */
+  .status-indicator {
+    font-size: 12px;
+  }
+  
+  /* Column indicators */
+  .kanban-column::before {
+    content: '';
+    display: block;
+    height: 3px;
+    background: var(--column-color);
+    margin: -12px -12px 12px -12px;
+    border-radius: 2px 2px 0 0;
+  }
+  
+  /* Task priority badges */
+  .task-priority {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  
+  /* Compact project badges */
+  .task-project {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 360px) {
+  .kanban-column {
+    min-width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
+  
+  .header-right {
+    flex-wrap: wrap;
+  }
+  
+  .header-right .search-box {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+}
+
+/* Landscape mode on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .kanban-column {
+    min-width: 45vw;
+    max-width: 45vw;
+  }
+  
+  .kanban-tasks {
+    max-height: calc(100vh - 200px);
+  }
+}
